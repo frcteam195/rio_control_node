@@ -3,7 +3,10 @@
 
 #define ZMQ_BUILD_DRAFT_API
 
-#include "zmq.h"
+#include <zmq.h>
+#include <thread>
+#include <string>
+#include <RobotStatus.pb.h>
 
 
 /**
@@ -12,6 +15,42 @@
 void chatterCallback(const std_msgs::String::ConstPtr& msg)
 {
   ROS_INFO("I heard: [%s]", msg->data.c_str());
+}
+
+void robot_receive_loop ()
+{
+  void *context = zmq_ctx_new ();
+  void *subscriber = zmq_socket(context, ZMQ_DISH);
+
+  int rc = zmq_bind(subscriber, "udp://*:5801");
+  int rc2 = zmq_join(subscriber, "robotstatus");
+
+  // ck::RobotStatus status;
+  char buffer [10000];
+
+  memset(buffer, 0, 10000);
+
+  ROS_INFO("WOOGITY WOOGITY test WOO %d %d %d %d", context, subscriber, rc, rc2);
+
+  while (ros::ok())
+  {
+    zmq_msg_t message;
+    zmq_msg_init(&message);
+    zmq_msg_recv(&message, subscriber, 0);
+
+    ROS_INFO("Got: %d %s\n", zmq_msg_size(&message), zmq_msg_group(&message));
+    void * data = zmq_msg_data(&message);
+
+    ck::RobotStatus status;
+    status.ParseFromArray(data, zmq_msg_size(&message));
+    
+    ROS_INFO("State: %s", ck::RobotStatus_RobotState_Name(status.robot_state()));
+    ROS_INFO("Alliance: %s", ck::RobotStatus_Alliance_Name(status.alliance()));
+    ROS_INFO("Time: %f", status.match_time());
+    ROS_INFO("Game Data: %s", status.game_data());
+
+    zmq_msg_close(&message);
+  }
 }
 
 int main(int argc, char **argv)
@@ -27,39 +66,11 @@ int main(int argc, char **argv)
    * part of the ROS system.
    */
   ros::init(argc, argv, "listener");
-  ros::Time::init();
+  // GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  void *context = zmq_ctx_new ();
-  void *subscriber = zmq_socket(context, ZMQ_DISH);
-  // zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
+  std::thread rioReceiveThread (robot_receive_loop);
 
-  int rc = zmq_bind(subscriber, "udp://*:5801");
-  // int rc2;
-  int rc2 = zmq_join(subscriber, "robotstatus");
-
-  
-  ROS_INFO("WOOGITY WOOGITY test WOO %d %d %d %d", context, subscriber, rc, rc2);
-
-  ros::Rate loop_rate(100);
-
-  while (ros::ok())
-  {
-    ros::spinOnce();
-
-    static char buffer [10000];
-
-    int32_t results = zmq_recv(subscriber, &buffer, 10000, ZMQ_NOBLOCK);
-
-    if(results > 0)
-    {
-      ROS_INFO("WE GOT SOME FUCKING SHIT! %d", results);
-    }
-
-
-
-
-    loop_rate.sleep();
-  }
+  ros::spin();
 
   return 0;
 }

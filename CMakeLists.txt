@@ -114,7 +114,8 @@ catkin_package(
 include_directories(
 # include
  ${catkin_INCLUDE_DIRS}
- ../../../../third_party_libs/CKROSlibzmq
+ ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSlibzmq
+ ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out
 )
 
 message("CATKIN INCLUDES:${catkin_INCLUDE_DIRS}")
@@ -212,4 +213,6 @@ target_link_libraries(talker ${catkin_LIBRARIES})
 add_executable(listener src/listener.cpp)
 target_link_libraries(listener ${catkin_LIBRARIES})
 target_link_libraries(listener ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSlibzmq/build/lib/libzmq.a)
+target_link_libraries(listener ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/RobotComms.a)
+target_link_libraries(listener ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSprotobuf/build/libprotobuf.a)
 target_link_libraries(listener Threads::Threads)
