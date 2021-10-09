@@ -1,6 +1,11 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 
+#define ZMQ_BUILD_DRAFT_API
+
+#include "zmq.h"
+
+
 /**
  * This tutorial demonstrates simple receipt of messages over the ROS system.
  */
@@ -23,16 +28,38 @@ int main(int argc, char **argv)
    */
   ros::init(argc, argv, "listener");
   ros::Time::init();
-  
-  ROS_INFO("WOOGITY WOOGITY WOO");
 
-  ros::Rate loop_rate(10);
-  /**
-   * ros::spin() will enter a loop, pumping callbacks.  With this version, all
-   * callbacks will be called from within this thread (the main one).  ros::spin()
-   * will exit when Ctrl-C is pressed, or the node is shutdown by the master.
-   */
-  ros::spin();
+  void *context = zmq_ctx_new ();
+  void *subscriber = zmq_socket(context, ZMQ_DISH);
+  // zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
+
+  int rc = zmq_bind(subscriber, "udp://*:5801");
+  // int rc2;
+  int rc2 = zmq_join(subscriber, "robotstatus");
+
+  
+  ROS_INFO("WOOGITY WOOGITY test WOO %d %d %d %d", context, subscriber, rc, rc2);
+
+  ros::Rate loop_rate(100);
+
+  while (ros::ok())
+  {
+    ros::spinOnce();
+
+    static char buffer [10000];
+
+    int32_t results = zmq_recv(subscriber, &buffer, 10000, ZMQ_NOBLOCK);
+
+    if(results > 0)
+    {
+      ROS_INFO("WE GOT SOME FUCKING SHIT! %d", results);
+    }
+
+
+
+
+    loop_rate.sleep();
+  }
 
   return 0;
 }
