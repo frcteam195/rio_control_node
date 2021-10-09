@@ -42,12 +42,13 @@ void robot_receive_loop ()
     void * data = zmq_msg_data(&message);
 
     ck::RobotStatus status;
-    status.ParseFromArray(data, zmq_msg_size(&message));
+    bool parse_result = status.ParseFromArray(data, zmq_msg_size(&message));
     
-    ROS_INFO("State: %s", ck::RobotStatus_RobotState_Name(status.robot_state()));
-    ROS_INFO("Alliance: %s", ck::RobotStatus_Alliance_Name(status.alliance()));
+    ROS_INFO("Parse result: %d", parse_result);
+    ROS_INFO("State: %s", ck::RobotStatus_RobotState_Name(status.robot_state()).c_str());
+    ROS_INFO("Alliance: %s", ck::RobotStatus_Alliance_Name(status.alliance()).c_str());
     ROS_INFO("Time: %f", status.match_time());
-    ROS_INFO("Game Data: %s", status.game_data());
+    ROS_INFO("Game Data: %s", status.game_data().c_str());
 
     zmq_msg_close(&message);
   }
