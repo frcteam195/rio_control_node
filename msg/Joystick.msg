@@ -1,4 +1,4 @@
 int32 index
 float32[] axes
-uint32[] buttons
-int32[] povs
+uint8[] buttons
+int16[] povs
