@@ -46,7 +46,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp message_generation)
 add_message_files(
   FILES
   Joystick.msg
-  Robot_Joysticks.msg
+  Joystick_Status.msg
 )
 
 ## Generate services in the 'srv' folder
