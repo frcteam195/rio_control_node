@@ -48,6 +48,8 @@ add_message_files(
   Joystick.msg
   Joystick_Status.msg
   Robot_Status.msg
+  Motor.msg
+  Motor_Control.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -13,15 +13,19 @@
 
 #include <rio_control_node/Joystick_Status.h>
 #include <rio_control_node/Robot_Status.h>
+#include <rio_control_node/Motor_Control.h>
 
 ros::NodeHandle * node;
 
-/**
- * This tutorial demonstrates simple receipt of messages over the ROS system.
- */
-void chatterCallback(const std_msgs::String::ConstPtr& msg)
+class MotorTracker 
 {
-  ROS_INFO("I heard: [%s]", msg->data.c_str());
+  public:
+  rio_control_node::Motor motor;
+};
+
+void motorControlCallback(const rio_control_node::Motor_Control& msg)
+{
+  ROS_INFO("Got some motor control data");
 }
 
 constexpr unsigned int str2int(const char* str, int h = 0)
@@ -159,6 +163,8 @@ int main(int argc, char **argv)
   node = &n;
 
   std::thread rioReceiveThread (robot_receive_loop);
+
+  ros::Subscriber motorControl = node->subscribe("MotorControl", 10, motorControlCallback);
 
   ros::spin();
 
