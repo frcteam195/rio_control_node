@@ -13,15 +13,131 @@
 #include "JoystickStatus.pb.h"
 #include "MotorControl.pb.h"
 #include "MotorStatus.pb.h"
+#include "MotorConfiguration.pb.h"
 
 #include <rio_control_node/Joystick_Status.h>
 #include <rio_control_node/Robot_Status.h>
 #include <rio_control_node/Motor_Control.h>
 #include <rio_control_node/Motor_Status.h>
+#include <rio_control_node/Motor_Configuration.h>
 
 void *context;
 
 ros::NodeHandle * node;
+
+class MotorConfigTracker 
+{
+  public:
+  rio_control_node::Motor_Config motor;
+};
+
+static std::map<int32_t, MotorConfigTracker> motor_config_map;
+
+void motorConfigCallback(const rio_control_node::Motor_Configuration& msg)
+{
+  for(int i = 0; i < msg.motors.size(); i++)
+  {
+    rio_control_node::Motor_Config updated_motor;
+    updated_motor = msg.motors[i];
+
+    MotorConfigTracker updated_tracked_motor;
+    updated_tracked_motor.motor = updated_motor;
+    
+    motor_config_map[msg.motors[i].id] = updated_tracked_motor;
+  }
+}
+
+
+void motor_config_transmit_loop()
+{
+  void *publisher = zmq_socket(context, ZMQ_RADIO);
+
+  int rc = zmq_connect(publisher, "udp://10.1.95.2:5801");
+
+  if(rc < 0)
+  {
+    ROS_INFO("Failed to initialize motor publisher");
+  }
+
+  char buffer [10000];
+
+  memset(buffer, 0, 10000);
+
+  ros::Rate rate(10);
+
+  while(ros::ok())
+  {
+    ck::MotorConfiguration motor_config;
+
+    for(std::map<int32_t, MotorConfigTracker>::iterator i = motor_config_map.begin();
+        i != motor_config_map.end();
+        i++)
+    {
+      ck::MotorConfiguration::Motor * new_motor = motor_config.add_motors();            
+
+        new_motor->set_id((*i).second.motor.id);
+        new_motor->set_controller_type((ck::MotorConfiguration_Motor_ControllerType)(*i).second.motor.controller_type);
+        new_motor->set_controller_mode((ck::MotorConfiguration_Motor_ControllerMode)(*i).second.motor.controller_mode);
+        
+        ck::MotorConfiguration_Motor_MotorControllerConfiguration motor_config;
+
+        motor_config.set_kp((*i).second.motor.kP);
+        motor_config.set_ki((*i).second.motor.kI);
+        motor_config.set_kd((*i).second.motor.kD);
+        motor_config.set_kf((*i).second.motor.kF);
+        motor_config.set_izone((*i).second.motor.iZone);
+        motor_config.set_max_i_accum((*i).second.motor.max_i_accum);
+        motor_config.set_allowed_closed_loop_error((*i).second.motor.allowed_closed_loop_error);
+        motor_config.set_max_closed_loop_peak_output((*i).second.motor.max_closed_loop_peak_output);
+        motor_config.set_motion_cruise_velocity((*i).second.motor.motion_cruise_velocity);
+        motor_config.set_motion_acceleration((*i).second.motor.motion_acceleration);
+        motor_config.set_motion_s_curve_strength((*i).second.motor.motion_s_curve_strength);
+        motor_config.set_forward_soft_limit((*i).second.motor.forward_soft_limit);
+        motor_config.set_forward_soft_limit_enable((*i).second.motor.forward_soft_limit_enable);
+        motor_config.set_reverse_soft_limit((*i).second.motor.reverse_soft_limit);
+        motor_config.set_reverse_soft_limit_enable((*i).second.motor.reverse_soft_limit_enable);
+        motor_config.set_feedback_sensor_coefficient((*i).second.motor.feedback_sensor_coefficient);
+        motor_config.set_voltage_compensation_saturation((*i).second.motor.voltage_compensation_saturation);
+        motor_config.set_voltage_compensation_enabled((*i).second.motor.voltage_compensation_enabled);
+        motor_config.set_invert_type((ck::MotorConfiguration_Motor_MotorControllerConfiguration_InvertType) (*i).second.motor.invert_type);
+        motor_config.set_sensor_phase_inverted((*i).second.motor.sensor_phase_inverted);
+        motor_config.set_neutral_mode((ck::MotorConfiguration_Motor_MotorControllerConfiguration_NeutralMode) (*i).second.motor.neutral_mode);
+        motor_config.set_open_loop_ramp((*i).second.motor.open_loop_ramp);
+        motor_config.set_closed_loop_ramp((*i).second.motor.closed_loop_ramp);
+        ck::MotorConfiguration_Motor_MotorControllerConfiguration_CurrentLimitConfiguration supply_limit;
+        supply_limit.set_enable((*i).second.motor.supply_current_limit_config.enable);
+        supply_limit.set_current_limit((*i).second.motor.supply_current_limit_config.current_limit);
+        supply_limit.set_trigger_threshold_current((*i).second.motor.supply_current_limit_config.trigger_threshold_current);
+        supply_limit.set_trigger_threshold_time((*i).second.motor.supply_current_limit_config.trigger_threshold_time);
+        motor_config.set_allocated_supply_current_limit_config(&supply_limit);
+        ck::MotorConfiguration_Motor_MotorControllerConfiguration_CurrentLimitConfiguration stator_limit;
+        stator_limit.set_enable((*i).second.motor.stator_current_limit_config.enable);
+        stator_limit.set_current_limit((*i).second.motor.stator_current_limit_config.current_limit);
+        stator_limit.set_trigger_threshold_current((*i).second.motor.stator_current_limit_config.trigger_threshold_current);
+        stator_limit.set_trigger_threshold_time((*i).second.motor.stator_current_limit_config.trigger_threshold_time);
+        motor_config.set_allocated_supply_current_limit_config(&stator_limit);
+
+    }
+
+    bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
+
+    if(!serialize_status)
+    {
+      ROS_INFO("Failed to serialize motor status!!");
+    }
+    else
+    {
+      zmq_msg_t message;
+      zmq_msg_init_size(&message, motor_config.ByteSizeLong());
+      memcpy (zmq_msg_data (&message), buffer, motor_config.ByteSizeLong());
+      zmq_msg_set_group(&message, "motorconfig");
+      zmq_msg_send(&message, publisher, 0);
+      zmq_msg_close(&message);
+    }
+
+    rate.sleep();
+  }
+}
 
 class MotorTracker 
 {
@@ -68,7 +184,6 @@ void motor_transmit_loop()
 
   while(ros::ok())
   {
-    ROS_INFO("Running!");
     static ck::MotorControl motor_control;
     motor_control.clear_motors();
     motor_control.Clear();
@@ -203,7 +318,6 @@ void process_robot_status(zmq_msg_t &message)
     robot_status.robot_state = status.robot_state();
     robot_status.match_time = status.match_time();
     robot_status.game_data = status.game_data().c_str();  
-    ROS_INFO("Got %d bytes : String %s : C_String %s : Hex %X", status.game_data().size(), status.game_data(), status.game_data().c_str(), status.game_data().c_str());
     robot_status_pub.publish(robot_status);
   }
 }
@@ -282,7 +396,8 @@ int main(int argc, char **argv)
   std::thread rioReceiveThread (robot_receive_loop);
   std::thread motorSendThread (motor_transmit_loop);
 
-  ros::Subscriber motorControl = node->subscribe("MotorControl", 10, motorControlCallback);
+  ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
+  ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
 
   ros::spin();
 
