@@ -213,7 +213,7 @@ void motor_transmit_loop()
       zmq_msg_init_size(&message, motor_control.ByteSizeLong());
       memcpy (zmq_msg_data (&message), buffer, motor_control.ByteSizeLong());
       zmq_msg_set_group(&message, "motorcontrol");
-      std::cout << "Sending message..." << std::endl;
+      // std::cout << "Sending message..." << std::endl;
       zmq_msg_send(&message, publisher, 0);
       zmq_msg_close(&message);
     }
