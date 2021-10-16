@@ -93,8 +93,10 @@ void motor_transmit_loop()
     else
     {
       zmq_msg_t message;
-      zmq_msg_init(&message);
-      zmq_msg_set_group(&message, "MotorControl");
+      zmq_msg_init_size(&message, motor_control.ByteSizeLong());
+      memcpy (zmq_msg_data (&message), buffer, motor_control.ByteSizeLong());
+      zmq_msg_set_group(&message, "motorcontrol");
+      std::cout << "Sending message..." << std::endl;
       zmq_msg_send(&message, publisher, 0);
       zmq_msg_close(&message);
     }
