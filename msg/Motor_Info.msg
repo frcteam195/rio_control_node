@@ -1,0 +1,6 @@
+int32 id
+float64 sensor_position
+float64 sensor_velocity
+float64 bus_voltage
+float64 bus_current
+float64 stator_current
