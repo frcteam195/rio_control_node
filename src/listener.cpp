@@ -52,21 +52,21 @@ void motor_transmit_loop()
   void *publisher = zmq_socket(context, ZMQ_RADIO);
 
   int rc = zmq_connect(publisher, "udp://10.1.95.2:5801");
-  // rc = zmq_join(subscriber, "robotstatus");
-  // rc = zmq_join(subscriber, "joystickstatus");
 
   if(rc < 0)
   {
     ROS_INFO("Failed to initialize motor publisher");
   }
 
-  // ck::RobotStatus status;
   char buffer [10000];
 
   memset(buffer, 0, 10000);
 
+  ros::Rate rate(100);
+
   while(ros::ok())
   {
+    ROS_INFO("Running!");
     static ck::MotorControl motor_control;
     motor_control.clear_motors();
     motor_control.Clear();
@@ -98,7 +98,10 @@ void motor_transmit_loop()
       zmq_msg_send(&message, publisher, 0);
       zmq_msg_close(&message);
     }
+
+    rate.sleep();
   }
+
 
 }
 
@@ -182,8 +185,7 @@ void robot_receive_loop ()
 
   memset(buffer, 0, 10000);
 
-  ROS_INFO("WOOGITY WOOGITY test WOO %d %d %d", context, subscriber, rc);
-
+  ROS_INFO("WOOGITY WOOGITY WOO %d %d %d", context, subscriber, rc);
 
   while (ros::ok())
   {
@@ -209,8 +211,6 @@ void robot_receive_loop ()
         ROS_INFO("Got unrecognized message: %s", message_group.c_str());
         break;
     }
-
-
 
     zmq_msg_close(&message);
   }
@@ -238,6 +238,7 @@ int main(int argc, char **argv)
   node = &n;
 
   std::thread rioReceiveThread (robot_receive_loop);
+  std::thread motorSendThread (motor_transmit_loop);
 
   ros::Subscriber motorControl = node->subscribe("MotorControl", 10, motorControlCallback);
 
