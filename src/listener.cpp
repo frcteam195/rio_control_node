@@ -7,13 +7,17 @@
 #include <zmq.h>
 #include <thread>
 #include <string>
+#include <map>
 
 #include "RobotStatus.pb.h"
 #include "JoystickStatus.pb.h"
+#include "MotorControl.pb.h"
 
 #include <rio_control_node/Joystick_Status.h>
 #include <rio_control_node/Robot_Status.h>
 #include <rio_control_node/Motor_Control.h>
+
+void *context;
 
 ros::NodeHandle * node;
 
@@ -23,9 +27,79 @@ class MotorTracker
   rio_control_node::Motor motor;
 };
 
+static std::map<int32_t, MotorTracker> motor_control_map;
+
 void motorControlCallback(const rio_control_node::Motor_Control& msg)
 {
-  ROS_INFO("Got some motor control data");
+  for(int i = 0; i < msg.motors.size(); i++)
+  {
+    rio_control_node::Motor updated_motor;
+    updated_motor.id = msg.motors[i].id;
+    updated_motor.output_value = msg.motors[i].output_value;
+    updated_motor.controller_type = msg.motors[i].controller_type;
+    updated_motor.control_mode = msg.motors[i].control_mode;
+    updated_motor.arbitrary_feedforward = msg.motors[i].arbitrary_feedforward;
+
+    MotorTracker updated_tracked_motor;
+    updated_tracked_motor.motor = updated_motor;
+    
+    motor_control_map[msg.motors[i].id] = updated_tracked_motor;
+  }
+}
+
+void motor_transmit_loop()
+{
+  void *publisher = zmq_socket(context, ZMQ_RADIO);
+
+  int rc = zmq_connect(publisher, "udp://10.1.95.2:5801");
+  // rc = zmq_join(subscriber, "robotstatus");
+  // rc = zmq_join(subscriber, "joystickstatus");
+
+  if(rc < 0)
+  {
+    ROS_INFO("Failed to initialize motor publisher");
+  }
+
+  // ck::RobotStatus status;
+  char buffer [10000];
+
+  memset(buffer, 0, 10000);
+
+  while(ros::ok())
+  {
+    static ck::MotorControl motor_control;
+    motor_control.clear_motors();
+    motor_control.Clear();
+
+    for(std::map<int32_t, MotorTracker>::iterator i = motor_control_map.begin();
+        i != motor_control_map.end();
+        i++)
+    {
+      ck::MotorControl::Motor * new_motor = motor_control.add_motors();
+
+      new_motor->set_arbitrary_feedforward((*i).second.motor.arbitrary_feedforward);
+      new_motor->set_control_mode((ck::MotorControl_Motor_ControlMode) (*i).second.motor.control_mode);
+      new_motor->set_controller_type((ck::MotorControl_Motor_ControllerType) (*i).second.motor.controller_type);
+      new_motor->set_id((*i).second.motor.id);
+      new_motor->set_output_value((*i).second.motor.output_value);
+    }
+
+    bool serialize_status = motor_control.SerializeToArray(buffer, 10000);
+
+    if(!serialize_status)
+    {
+      ROS_INFO("Failed to serialize motor status!!");
+    }
+    else
+    {
+      zmq_msg_t message;
+      zmq_msg_init(&message);
+      zmq_msg_set_group(&message, "MotorControl");
+      zmq_msg_send(&message, publisher, 0);
+      zmq_msg_close(&message);
+    }
+  }
+
 }
 
 constexpr unsigned int str2int(const char* str, int h = 0)
@@ -97,7 +171,6 @@ void process_robot_status(zmq_msg_t &message)
 
 void robot_receive_loop ()
 {
-  void *context = zmq_ctx_new ();
   void *subscriber = zmq_socket(context, ZMQ_DISH);
 
   int rc = zmq_bind(subscriber, "udp://*:5801");
@@ -157,6 +230,8 @@ int main(int argc, char **argv)
    */
   ros::init(argc, argv, "listener");
   // GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  context = zmq_ctx_new ();
 
   ros::NodeHandle n;
 
