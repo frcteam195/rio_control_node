@@ -1,0 +1,4 @@
+bool enable
+float64 current_limit
+float64 trigger_threshold_current
+float64 trigger_threshold_time

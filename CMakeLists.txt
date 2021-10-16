@@ -50,6 +50,9 @@ add_message_files(
   Robot_Status.msg
   Motor.msg
   Motor_Control.msg
+  Current_Limit_Configuration.msg
+  Motor_Config.msg
+  Motor_Configuration.msg
 )
 
 ## Generate services in the 'srv' folder
