@@ -53,6 +53,8 @@ add_message_files(
   Current_Limit_Configuration.msg
   Motor_Config.msg
   Motor_Configuration.msg
+  Motor_Info.msg
+  Motor_Status.msg
 )
 
 ## Generate services in the 'srv' folder

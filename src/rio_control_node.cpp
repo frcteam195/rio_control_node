@@ -12,10 +12,12 @@
 #include "RobotStatus.pb.h"
 #include "JoystickStatus.pb.h"
 #include "MotorControl.pb.h"
+#include "MotorStatus.pb.h"
 
 #include <rio_control_node/Joystick_Status.h>
 #include <rio_control_node/Robot_Status.h>
 #include <rio_control_node/Motor_Control.h>
+#include <rio_control_node/Motor_Status.h>
 
 void *context;
 
@@ -112,6 +114,38 @@ constexpr unsigned int str2int(const char* str, int h = 0)
     return !str[h] ? 5381 : (str2int(str, h+1) * 33) ^ str[h];
 }
 
+
+void process_motor_status(zmq_msg_t &message)
+{
+  static ros::Publisher motor_status_pub = node->advertise<rio_control_node::Motor_Status>("MotorStatus", 1);
+  static ck::MotorStatus status;
+
+  void * data = zmq_msg_data(&message);
+  bool parse_result = status.ParseFromArray(data, zmq_msg_size(&message));
+  if (parse_result)
+  {
+
+    rio_control_node::Motor_Status motor_status;
+
+    for (int i = 0; i < status.motors_size(); i++)
+    {
+      const ck::MotorStatus::Motor& motor = status.motors(i);
+      rio_control_node::Motor_Info motor_info;
+
+      motor_info.id = motor.id();
+      motor_info.sensor_position = motor.sensor_position();
+      motor_info.sensor_velocity = motor.sensor_velocity();
+      motor_info.bus_voltage = motor.bus_voltage();
+      motor_info.bus_current = motor.bus_current();
+      motor_info.stator_current = motor.stator_current();      
+
+      motor_status.motors.push_back(motor_info);
+
+    }
+    motor_status_pub.publish(motor_status);
+  }
+}
+
 void process_joystick_status(zmq_msg_t &message)
 {
   static ros::Publisher joystick_pub = node->advertise<rio_control_node::Joystick_Status>("JoystickStatus", 1);
@@ -181,6 +215,7 @@ void robot_receive_loop ()
   int rc = zmq_bind(subscriber, "udp://*:5801");
   rc = zmq_join(subscriber, "robotstatus");
   rc = zmq_join(subscriber, "joystickstatus");
+  rc = zmq_join(subscriber, "motorstatus");
 
   // ck::RobotStatus status;
   char buffer [10000];
@@ -207,6 +242,11 @@ void robot_receive_loop ()
       case str2int("robotstatus"):
         {
           process_robot_status(message);
+        }
+        break;
+      case str2int("motorstatus"):
+        {
+          process_motor_status(message);
         }
         break;
       default:
