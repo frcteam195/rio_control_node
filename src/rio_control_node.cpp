@@ -68,55 +68,54 @@ void motor_config_transmit_loop()
   while(ros::ok())
   {
     ck::MotorConfiguration motor_config;
-
     for(std::map<int32_t, MotorConfigTracker>::iterator i = motor_config_map.begin();
         i != motor_config_map.end();
         i++)
     {
-      ck::MotorConfiguration::Motor * new_motor = motor_config.add_motors();            
+        ck::MotorConfiguration::Motor * new_motor = motor_config.add_motors();            
 
         new_motor->set_id((*i).second.motor.id);
         new_motor->set_controller_type((ck::MotorConfiguration_Motor_ControllerType)(*i).second.motor.controller_type);
         new_motor->set_controller_mode((ck::MotorConfiguration_Motor_ControllerMode)(*i).second.motor.controller_mode);
         
-        ck::MotorConfiguration_Motor_MotorControllerConfiguration motor_config;
+        ck::MotorConfiguration_Motor_MotorControllerConfiguration* motor_config_internal = new ck::MotorConfiguration_Motor_MotorControllerConfiguration();
 
-        motor_config.set_kp((*i).second.motor.kP);
-        motor_config.set_ki((*i).second.motor.kI);
-        motor_config.set_kd((*i).second.motor.kD);
-        motor_config.set_kf((*i).second.motor.kF);
-        motor_config.set_izone((*i).second.motor.iZone);
-        motor_config.set_max_i_accum((*i).second.motor.max_i_accum);
-        motor_config.set_allowed_closed_loop_error((*i).second.motor.allowed_closed_loop_error);
-        motor_config.set_max_closed_loop_peak_output((*i).second.motor.max_closed_loop_peak_output);
-        motor_config.set_motion_cruise_velocity((*i).second.motor.motion_cruise_velocity);
-        motor_config.set_motion_acceleration((*i).second.motor.motion_acceleration);
-        motor_config.set_motion_s_curve_strength((*i).second.motor.motion_s_curve_strength);
-        motor_config.set_forward_soft_limit((*i).second.motor.forward_soft_limit);
-        motor_config.set_forward_soft_limit_enable((*i).second.motor.forward_soft_limit_enable);
-        motor_config.set_reverse_soft_limit((*i).second.motor.reverse_soft_limit);
-        motor_config.set_reverse_soft_limit_enable((*i).second.motor.reverse_soft_limit_enable);
-        motor_config.set_feedback_sensor_coefficient((*i).second.motor.feedback_sensor_coefficient);
-        motor_config.set_voltage_compensation_saturation((*i).second.motor.voltage_compensation_saturation);
-        motor_config.set_voltage_compensation_enabled((*i).second.motor.voltage_compensation_enabled);
-        motor_config.set_invert_type((ck::MotorConfiguration_Motor_MotorControllerConfiguration_InvertType) (*i).second.motor.invert_type);
-        motor_config.set_sensor_phase_inverted((*i).second.motor.sensor_phase_inverted);
-        motor_config.set_neutral_mode((ck::MotorConfiguration_Motor_MotorControllerConfiguration_NeutralMode) (*i).second.motor.neutral_mode);
-        motor_config.set_open_loop_ramp((*i).second.motor.open_loop_ramp);
-        motor_config.set_closed_loop_ramp((*i).second.motor.closed_loop_ramp);
-        ck::MotorConfiguration_Motor_MotorControllerConfiguration_CurrentLimitConfiguration supply_limit;
-        supply_limit.set_enable((*i).second.motor.supply_current_limit_config.enable);
-        supply_limit.set_current_limit((*i).second.motor.supply_current_limit_config.current_limit);
-        supply_limit.set_trigger_threshold_current((*i).second.motor.supply_current_limit_config.trigger_threshold_current);
-        supply_limit.set_trigger_threshold_time((*i).second.motor.supply_current_limit_config.trigger_threshold_time);
-        motor_config.set_allocated_supply_current_limit_config(&supply_limit);
-        ck::MotorConfiguration_Motor_MotorControllerConfiguration_CurrentLimitConfiguration stator_limit;
-        stator_limit.set_enable((*i).second.motor.stator_current_limit_config.enable);
-        stator_limit.set_current_limit((*i).second.motor.stator_current_limit_config.current_limit);
-        stator_limit.set_trigger_threshold_current((*i).second.motor.stator_current_limit_config.trigger_threshold_current);
-        stator_limit.set_trigger_threshold_time((*i).second.motor.stator_current_limit_config.trigger_threshold_time);
-        motor_config.set_allocated_supply_current_limit_config(&stator_limit);
-
+        motor_config_internal->set_kp((*i).second.motor.kP);
+        motor_config_internal->set_ki((*i).second.motor.kI);
+        motor_config_internal->set_kd((*i).second.motor.kD);
+        motor_config_internal->set_kf((*i).second.motor.kF);
+        motor_config_internal->set_izone((*i).second.motor.iZone);
+        motor_config_internal->set_max_i_accum((*i).second.motor.max_i_accum);
+        motor_config_internal->set_allowed_closed_loop_error((*i).second.motor.allowed_closed_loop_error);
+        motor_config_internal->set_max_closed_loop_peak_output((*i).second.motor.max_closed_loop_peak_output);
+        motor_config_internal->set_motion_cruise_velocity((*i).second.motor.motion_cruise_velocity);
+        motor_config_internal->set_motion_acceleration((*i).second.motor.motion_acceleration);
+        motor_config_internal->set_motion_s_curve_strength((*i).second.motor.motion_s_curve_strength);
+        motor_config_internal->set_forward_soft_limit((*i).second.motor.forward_soft_limit);
+        motor_config_internal->set_forward_soft_limit_enable((*i).second.motor.forward_soft_limit_enable);
+        motor_config_internal->set_reverse_soft_limit((*i).second.motor.reverse_soft_limit);
+        motor_config_internal->set_reverse_soft_limit_enable((*i).second.motor.reverse_soft_limit_enable);
+        motor_config_internal->set_feedback_sensor_coefficient((*i).second.motor.feedback_sensor_coefficient);
+        motor_config_internal->set_voltage_compensation_saturation((*i).second.motor.voltage_compensation_saturation);
+        motor_config_internal->set_voltage_compensation_enabled((*i).second.motor.voltage_compensation_enabled);
+        motor_config_internal->set_invert_type((ck::MotorConfiguration_Motor_MotorControllerConfiguration_InvertType) (*i).second.motor.invert_type);
+        motor_config_internal->set_sensor_phase_inverted((*i).second.motor.sensor_phase_inverted);
+        motor_config_internal->set_neutral_mode((ck::MotorConfiguration_Motor_MotorControllerConfiguration_NeutralMode) (*i).second.motor.neutral_mode);
+        motor_config_internal->set_open_loop_ramp((*i).second.motor.open_loop_ramp);
+        motor_config_internal->set_closed_loop_ramp((*i).second.motor.closed_loop_ramp);
+        ck::MotorConfiguration_Motor_MotorControllerConfiguration_CurrentLimitConfiguration* supply_limit = new ck::MotorConfiguration_Motor_MotorControllerConfiguration_CurrentLimitConfiguration();
+        supply_limit->set_enable((*i).second.motor.supply_current_limit_config.enable);
+        supply_limit->set_current_limit((*i).second.motor.supply_current_limit_config.current_limit);
+        supply_limit->set_trigger_threshold_current((*i).second.motor.supply_current_limit_config.trigger_threshold_current);
+        supply_limit->set_trigger_threshold_time((*i).second.motor.supply_current_limit_config.trigger_threshold_time);
+        motor_config_internal->set_allocated_supply_current_limit_config(supply_limit);
+        ck::MotorConfiguration_Motor_MotorControllerConfiguration_CurrentLimitConfiguration* stator_limit = new ck::MotorConfiguration_Motor_MotorControllerConfiguration_CurrentLimitConfiguration();
+        stator_limit->set_enable((*i).second.motor.stator_current_limit_config.enable);
+        stator_limit->set_current_limit((*i).second.motor.stator_current_limit_config.current_limit);
+        stator_limit->set_trigger_threshold_current((*i).second.motor.stator_current_limit_config.trigger_threshold_current);
+        stator_limit->set_trigger_threshold_time((*i).second.motor.stator_current_limit_config.trigger_threshold_time);
+        motor_config_internal->set_allocated_supply_current_limit_config(stator_limit);
+        new_motor->set_allocated_motor_configuration(motor_config_internal);
     }
 
     bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
@@ -395,6 +394,7 @@ int main(int argc, char **argv)
 
   std::thread rioReceiveThread (robot_receive_loop);
   std::thread motorSendThread (motor_transmit_loop);
+  std::thread motorConfigSendThread (motor_config_transmit_loop);
 
   ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
   ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
