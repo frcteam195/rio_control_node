@@ -24,11 +24,14 @@
 void *context;
 
 ros::NodeHandle * node;
+static constexpr int32_t kMaxValueHeartbeat = 200;
+static constexpr int32_t kMaxConfigHeartbeat = 20;
 
 class MotorConfigTracker 
 {
   public:
   rio_control_node::Motor_Config motor;
+  int32_t heartbeat;
 };
 
 static std::map<int32_t, MotorConfigTracker> motor_config_map;
@@ -42,6 +45,7 @@ void motorConfigCallback(const rio_control_node::Motor_Configuration& msg)
 
     MotorConfigTracker updated_tracked_motor;
     updated_tracked_motor.motor = updated_motor;
+    updated_tracked_motor.heartbeat = kMaxConfigHeartbeat;
     
     motor_config_map[msg.motors[i].id] = updated_tracked_motor;
   }
@@ -72,6 +76,12 @@ void motor_config_transmit_loop()
         i != motor_config_map.end();
         i++)
     {
+        if (i->second.heartbeat-- <= 0)
+        {
+          motor_config_map.erase(i);
+          continue;
+        }
+
         ck::MotorConfiguration::Motor * new_motor = motor_config.add_motors();            
 
         new_motor->set_id((*i).second.motor.id);
@@ -142,6 +152,7 @@ class MotorTracker
 {
   public:
   rio_control_node::Motor motor;
+  int32_t heartbeat;
 };
 
 static std::map<int32_t, MotorTracker> motor_control_map;
@@ -159,6 +170,7 @@ void motorControlCallback(const rio_control_node::Motor_Control& msg)
 
     MotorTracker updated_tracked_motor;
     updated_tracked_motor.motor = updated_motor;
+    updated_tracked_motor.heartbeat = kMaxValueHeartbeat;
     
     motor_control_map[msg.motors[i].id] = updated_tracked_motor;
   }
@@ -191,6 +203,12 @@ void motor_transmit_loop()
         i != motor_control_map.end();
         i++)
     {
+      if (i->second.heartbeat-- <= 0)
+      {
+        motor_control_map.erase(i);
+        continue;
+      }
+
       ck::MotorControl::Motor * new_motor = motor_control.add_motors();
 
       new_motor->set_arbitrary_feedforward((*i).second.motor.arbitrary_feedforward);
