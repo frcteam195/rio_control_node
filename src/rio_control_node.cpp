@@ -8,6 +8,8 @@
 #include <thread>
 #include <string>
 #include <map>
+#include <mutex>
+#include <iostream>
 
 #include "RobotStatus.pb.h"
 #include "JoystickStatus.pb.h"
@@ -24,20 +26,22 @@
 void *context;
 
 ros::NodeHandle * node;
-static constexpr int32_t kMaxValueHeartbeat = 200;
-static constexpr int32_t kMaxConfigHeartbeat = 20;
+
+constexpr float MOTOR_CONTROL_TIMEOUT = 0.2;
+
+std::mutex motor_config_mutex;
 
 class MotorConfigTracker 
 {
   public:
   rio_control_node::Motor_Config motor;
-  int32_t heartbeat;
 };
 
 static std::map<int32_t, MotorConfigTracker> motor_config_map;
 
 void motorConfigCallback(const rio_control_node::Motor_Configuration& msg)
 {
+  std::lock_guard<std::mutex> lock(motor_config_mutex);
   for(int i = 0; i < msg.motors.size(); i++)
   {
     rio_control_node::Motor_Config updated_motor;
@@ -45,7 +49,6 @@ void motorConfigCallback(const rio_control_node::Motor_Configuration& msg)
 
     MotorConfigTracker updated_tracked_motor;
     updated_tracked_motor.motor = updated_motor;
-    updated_tracked_motor.heartbeat = kMaxConfigHeartbeat;
     
     motor_config_map[msg.motors[i].id] = updated_tracked_motor;
   }
@@ -54,6 +57,7 @@ void motorConfigCallback(const rio_control_node::Motor_Configuration& msg)
 
 void motor_config_transmit_loop()
 {
+  std::lock_guard<std::mutex> lock(motor_config_mutex);
   void *publisher = zmq_socket(context, ZMQ_RADIO);
 
   int rc = zmq_connect(publisher, "udp://10.1.95.2:5801");
@@ -76,11 +80,6 @@ void motor_config_transmit_loop()
         i != motor_config_map.end();
         i++)
     {
-        if (i->second.heartbeat-- <= 0)
-        {
-          motor_config_map.erase(i);
-          continue;
-        }
 
         ck::MotorConfiguration::Motor * new_motor = motor_config.add_motors();            
 
@@ -148,17 +147,20 @@ void motor_config_transmit_loop()
   }
 }
 
+std::mutex motor_control_mutex;
+
 class MotorTracker 
 {
   public:
   rio_control_node::Motor motor;
-  int32_t heartbeat;
+  ros::Time active_time;
 };
 
 static std::map<int32_t, MotorTracker> motor_control_map;
 
 void motorControlCallback(const rio_control_node::Motor_Control& msg)
 {
+  std::lock_guard<std::mutex> lock(motor_control_mutex);
   for(int i = 0; i < msg.motors.size(); i++)
   {
     rio_control_node::Motor updated_motor;
@@ -170,7 +172,7 @@ void motorControlCallback(const rio_control_node::Motor_Control& msg)
 
     MotorTracker updated_tracked_motor;
     updated_tracked_motor.motor = updated_motor;
-    updated_tracked_motor.heartbeat = kMaxValueHeartbeat;
+    updated_tracked_motor.active_time = ros::Time::now() + ros::Duration(MOTOR_CONTROL_TIMEOUT);
     
     motor_control_map[msg.motors[i].id] = updated_tracked_motor;
   }
@@ -178,6 +180,7 @@ void motorControlCallback(const rio_control_node::Motor_Control& msg)
 
 void motor_transmit_loop()
 {
+  std::lock_guard<std::mutex> lock(motor_control_mutex);
   void *publisher = zmq_socket(context, ZMQ_RADIO);
 
   int rc = zmq_connect(publisher, "udp://10.1.95.2:5801");
@@ -199,16 +202,12 @@ void motor_transmit_loop()
     motor_control.clear_motors();
     motor_control.Clear();
 
+    std::vector<std::map<int32_t, MotorTracker>::iterator> timed_out_motor_list;
+
     for(std::map<int32_t, MotorTracker>::iterator i = motor_control_map.begin();
         i != motor_control_map.end();
         i++)
     {
-      if (i->second.heartbeat-- <= 0)
-      {
-        motor_control_map.erase(i);
-        continue;
-      }
-
       ck::MotorControl::Motor * new_motor = motor_control.add_motors();
 
       new_motor->set_arbitrary_feedforward((*i).second.motor.arbitrary_feedforward);
@@ -216,6 +215,18 @@ void motor_transmit_loop()
       new_motor->set_controller_type((ck::MotorControl_Motor_ControllerType) (*i).second.motor.controller_type);
       new_motor->set_id((*i).second.motor.id);
       new_motor->set_output_value((*i).second.motor.output_value);
+
+      if ((*i).second.active_time < ros::Time::now())
+      {
+        timed_out_motor_list.push_back(i);
+      }
+    }
+
+    for (std::vector<std::map<int32_t, MotorTracker>::iterator>::iterator i = timed_out_motor_list.begin();
+         i != timed_out_motor_list.end();
+         i++)
+    {
+      motor_control_map.erase((*i));
     }
 
     bool serialize_status = motor_control.SerializeToArray(buffer, 10000);
