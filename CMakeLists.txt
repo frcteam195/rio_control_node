@@ -218,7 +218,17 @@ find_package(Threads REQUIRED)
 
 add_executable(rio_control_node src/rio_control_node.cpp)
 target_link_libraries(rio_control_node ${catkin_LIBRARIES})
-target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSlibzmq/build/lib/libzmq.a)
-target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/RobotComms.a)
-target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSprotobuf/build/libprotobuf.a)
+
+if(ROBOT_ARCHITECTURE_X86_64)
+  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSlibzmq/build/x86_64/lib/libzmq.a)
+  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/x86_64/RobotComms.a)
+  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSprotobuf/build/x86_64/libprotobuf.a)
+endif(ROBOT_ARCHITECTURE_X86_64)
+
+if(ROBOT_ARCHITECTURE_AARCH64)
+  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSlibzmq/build/aarch64/lib/libzmq.a)
+  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/aarch64/RobotComms.a)
+  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSprotobuf/build/aarch64/libprotobuf.a)
+endif(ROBOT_ARCHITECTURE_AARCH64)
+
 target_link_libraries(rio_control_node Threads::Threads)
