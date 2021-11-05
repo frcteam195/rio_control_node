@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
+set(PROJECT_NAME "rio_control_node")
 project(rio_control_node)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -7,7 +8,7 @@ project(rio_control_node)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp message_generation)
+find_package(catkin REQUIRED COMPONENTS roscpp message_generation std_msgs)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -111,6 +112,7 @@ catkin_package(
 #  LIBRARIES rio_control_node
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
+   CATKIN_DEPENDS message_generation
 )
 
 ###########
@@ -232,3 +234,5 @@ if(ROBOT_ARCHITECTURE_AARCH64)
 endif(ROBOT_ARCHITECTURE_AARCH64)
 
 target_link_libraries(rio_control_node Threads::Threads)
+
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
