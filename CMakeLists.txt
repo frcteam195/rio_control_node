@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2)
 set(PROJECT_NAME "rio_control_node")
-project(rio_control_node)
+project(${PROJECT_NAME})
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
