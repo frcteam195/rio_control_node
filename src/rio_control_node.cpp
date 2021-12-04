@@ -16,11 +16,14 @@
 #include "MotorControl.pb.h"
 #include "MotorStatus.pb.h"
 #include "MotorConfiguration.pb.h"
+#include "IMUData.pb.h"
 
 #include <rio_control_node/Joystick_Status.h>
 #include <rio_control_node/Robot_Status.h>
 #include <rio_control_node/Motor_Control.h>
 #include <rio_control_node/Motor_Status.h>
+#include <rio_control_node/IMU_Data.h>
+#include <rio_control_node/IMU_Sensor_Data.h>
 #include <rio_control_node/Motor_Configuration.h>
 
 // #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
@@ -351,12 +354,37 @@ void process_robot_status(zmq_msg_t &message)
 	}
 }
 
+void process_imu_data(zmq_msg_t &message)
+{
+	static ck::IMUData imuData;
+	static ros::Publisher imu_data_pub = node->advertise<rio_control_node::Robot_Status>("IMUData", 1);
+
+	void *data = zmq_msg_data(&message);
+	bool parse_result = imuData.ParseFromArray(data, zmq_msg_size(&message));
+
+	if (parse_result)
+	{
+		rio_control_node::IMU_Data imuDataRosMsg;
+		for (int i = 0; i < imuData.imu_sensor_size(); i++)
+		{
+			const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
+			rio_control_node::IMU_Sensor_Data imuSensorDataRosMsg;
+			imuSensorDataRosMsg.yaw = imuSensorData.yaw();
+			imuSensorDataRosMsg.pitch = imuSensorData.pitch();
+			imuSensorDataRosMsg.roll = imuSensorData.roll();
+			imuDataRosMsg.imuData.push_back(imuSensorDataRosMsg);
+		}
+		imu_data_pub.publish(imuDataRosMsg);
+	}
+}
+
 void robot_receive_loop()
 {
 	void *subscriber = zmq_socket(context, ZMQ_DISH);
 
 	int rc = zmq_bind(subscriber, "udp://*:5801");
 	rc = zmq_join(subscriber, "robotstatus");
+	rc = zmq_join(subscriber, "imudata");
 	rc = zmq_join(subscriber, "joystickstatus");
 	rc = zmq_join(subscriber, "motorstatus");
 
@@ -390,6 +418,11 @@ void robot_receive_loop()
 		case str2int("motorstatus"):
 		{
 			process_motor_status(message);
+		}
+		break;
+		case str2int("imudata"):
+		{
+			process_imu_data(message);
 		}
 		break;
 		default:
