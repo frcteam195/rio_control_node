@@ -1,4 +1,6 @@
 
+#include "rio_control_node.hpp"
+
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 
@@ -25,6 +27,7 @@
 #include <rio_control_node/IMU_Data.h>
 #include <rio_control_node/IMU_Sensor_Data.h>
 #include <rio_control_node/Motor_Configuration.h>
+#include <rio_control_node/Cal_Override_Mode.h>
 
 // #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
 #define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
@@ -35,6 +38,7 @@ ros::NodeHandle *node;
 
 constexpr float MOTOR_CONTROL_TIMEOUT = 0.2;
 
+std::mutex override_mode_mutex;
 std::mutex motor_config_mutex;
 
 class MotorConfigTracker
@@ -44,6 +48,14 @@ public:
 };
 
 static std::map<int32_t, MotorConfigTracker> motor_config_map;
+
+
+void modeOverrideCallback(const rio_control_node::Cal_Override_Mode &msg)
+{
+	std::lock_guard<std::mutex> lock(override_mode_mutex);
+	
+}
+
 
 void motorConfigCallback(const rio_control_node::Motor_Configuration &msg)
 {
@@ -457,6 +469,7 @@ int main(int argc, char **argv)
 
 	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
 	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
+	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback);
 
 	ros::spin();
 

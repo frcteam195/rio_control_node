@@ -58,6 +58,7 @@ add_message_files(
   Motor_Status.msg
   IMU_Sensor_Data.msg
   IMU_Data.msg
+  Cal_Override_Mode.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -220,21 +221,40 @@ message("CATKIN INCLUDES:${catkin_INCLUDE_DIRS}")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-add_executable(rio_control_node src/rio_control_node.cpp)
-target_link_libraries(rio_control_node ${catkin_LIBRARIES})
+file(GLOB_RECURSE executable_sources CONFIGURE_DEPENDS
+     "${PROJECT_SOURCE_DIR}/src/*.cpp"
+)
+
+file(GLOB_RECURSE test_sources CONFIGURE_DEPENDS
+     "${PROJECT_SOURCE_DIR}/test/src/*.cpp"
+)
+
+add_executable(${PROJECT_NAME} ${executable_sources})
+set_property(TARGET ${PROJECT_NAME} PROPERTY ENABLE_EXPORTS 1)
+target_include_directories(${PROJECT_NAME} PUBLIC "include")
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
 if(ROBOT_ARCHITECTURE_NATIVE)
-  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSlibzmq/build/native/lib/libzmq.a)
-  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/native/RobotComms.a)
-  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSprotobuf/build/native/libprotobuf.a)
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSlibzmq/build/native/lib/libzmq.a)
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/native/RobotComms.a)
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSprotobuf/build/native/libprotobuf.a)
 endif(ROBOT_ARCHITECTURE_NATIVE)
 
 if(ROBOT_ARCHITECTURE_AARCH64)
-  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSlibzmq/build/aarch64/lib/libzmq.a)
-  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/aarch64/RobotComms.a)
-  target_link_libraries(rio_control_node ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSprotobuf/build/aarch64/libprotobuf.a)
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSlibzmq/build/aarch64/lib/libzmq.a)
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/aarch64/RobotComms.a)
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/CKROSprotobuf/build/aarch64/libprotobuf.a)
 endif(ROBOT_ARCHITECTURE_AARCH64)
 
-target_link_libraries(rio_control_node Threads::Threads)
+target_link_libraries(${PROJECT_NAME} Threads::Threads)
 
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+#############
+## Testing ##
+#############
+catkin_add_gtest(${PROJECT_NAME}-test ${test_sources})
+if(TARGET ${PROJECT_NAME}-test)
+  target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
+  target_include_directories(${PROJECT_NAME}-test PUBLIC "include" "test/include")
+endif()

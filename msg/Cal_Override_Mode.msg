@@ -1,0 +1,5 @@
+int8 NORMAL_OPERATION=0
+int8 TUNING_PIDS=1
+int8 TEST_SYSTEM=2
+
+uint8 operation_mode
