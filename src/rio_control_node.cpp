@@ -60,13 +60,17 @@ void modeOverrideCallback(const rio_control_node::Cal_Override_Mode &msg)
 
 void process_override_heartbeat_thread()
 {
-	ros::Rate rate(10);
+	ros::Rate rate(OVERRIDE_HEARTBEAT_RATE);
 
 	while (ros::ok())
 	{
 		{
 			std::lock_guard<std::mutex> lock(override_mode_mutex);
-			//overrideModeS.heartbeatTimeout--;
+			overrideModeS.heartbeatTimeout = std::fmax(--overrideModeS.heartbeatTimeout, 0);
+			if (overrideModeS.heartbeatTimeout <= 0)
+			{
+				overrideModeS.overrideMode = OVERRIDE_MODE::NORMAL_OPERATION;
+			}
 		}
 		rate.sleep();
 	}
