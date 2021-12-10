@@ -50,10 +50,12 @@ public:
 static std::map<int32_t, MotorConfigTracker> motor_config_map;
 
 
+static OVERRIDE_MODE overrideMode = OVERRIDE_MODE::NORMAL_OPERATION;
+
 void modeOverrideCallback(const rio_control_node::Cal_Override_Mode &msg)
 {
 	std::lock_guard<std::mutex> lock(override_mode_mutex);
-	
+	overrideMode = (OVERRIDE_MODE)msg.operation_mode;
 }
 
 
