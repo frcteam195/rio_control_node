@@ -49,17 +49,31 @@ public:
 
 static std::map<int32_t, MotorConfigTracker> motor_config_map;
 
-
-static OVERRIDE_MODE overrideMode = OVERRIDE_MODE::NORMAL_OPERATION;
+static OverrideModeStruct overrideModeS = NORMAL_OPERATION_MODE;
 
 void modeOverrideCallback(const rio_control_node::Cal_Override_Mode &msg)
 {
 	std::lock_guard<std::mutex> lock(override_mode_mutex);
-	overrideMode = (OVERRIDE_MODE)msg.operation_mode;
+	overrideModeS.overrideMode = (OVERRIDE_MODE)msg.operation_mode;
+	overrideModeS.heartbeatTimeout = DEFAULT_OVERRIDE_TIMEOUT;
 }
 
+void process_override_heartbeat_thread()
+{
+	ros::Rate rate(10);
 
-void motorConfigCallback(const rio_control_node::Motor_Configuration &msg)
+	while (ros::ok())
+	{
+		{
+			std::lock_guard<std::mutex> lock(override_mode_mutex);
+			//overrideModeS.heartbeatTimeout--;
+		}
+		rate.sleep();
+	}
+
+}
+
+void processMotorConfigMsg(const rio_control_node::Motor_Configuration &msg)
 {
 	std::lock_guard<std::mutex> lock(motor_config_mutex);
 	for (int i = 0; i < msg.motors.size(); i++)
@@ -71,6 +85,22 @@ void motorConfigCallback(const rio_control_node::Motor_Configuration &msg)
 		updated_tracked_motor.motor = updated_motor;
 
 		motor_config_map[msg.motors[i].id] = updated_tracked_motor;
+	}
+}
+
+void motorTuningConfigCallback(const rio_control_node::Motor_Configuration &msg)
+{
+	if (overrideModeS.overrideMode == OVERRIDE_MODE::TUNING_PIDS)
+	{
+		processMotorConfigMsg(msg);
+	}
+}
+
+void motorConfigCallback(const rio_control_node::Motor_Configuration &msg)
+{
+	if (overrideModeS.overrideMode == OVERRIDE_MODE::NORMAL_OPERATION)
+	{
+		processMotorConfigMsg(msg);
 	}
 }
 
@@ -175,7 +205,7 @@ public:
 
 static std::map<int32_t, MotorTracker> motor_control_map;
 
-void motorControlCallback(const rio_control_node::Motor_Control &msg)
+void processMotorControlMsg(const rio_control_node::Motor_Control &msg)
 {
 	std::lock_guard<std::mutex> lock(motor_control_mutex);
 	for (int i = 0; i < msg.motors.size(); i++)
@@ -192,6 +222,22 @@ void motorControlCallback(const rio_control_node::Motor_Control &msg)
 		updated_tracked_motor.active_time = ros::Time::now() + ros::Duration(MOTOR_CONTROL_TIMEOUT);
 
 		motor_control_map[msg.motors[i].id] = updated_tracked_motor;
+	}
+}
+
+void motorTuningControlCallback(const rio_control_node::Motor_Control &msg)
+{
+	if (overrideModeS.overrideMode == OVERRIDE_MODE::TUNING_PIDS)
+	{
+		processMotorControlMsg(msg);
+	}
+}
+
+void motorControlCallback(const rio_control_node::Motor_Control &msg)
+{
+	if (overrideModeS.overrideMode == OVERRIDE_MODE::NORMAL_OPERATION)
+	{
+		processMotorControlMsg(msg);
 	}
 }
 
@@ -367,7 +413,7 @@ void process_robot_status(zmq_msg_t &message)
 void process_imu_data(zmq_msg_t &message)
 {
 	static ck::IMUData imuData;
-	static ros::Publisher imu_data_pub = node->advertise<rio_control_node::Robot_Status>("IMUData", 1);
+	static ros::Publisher imu_data_pub = node->advertise<rio_control_node::IMU_Data>("IMUData", 1);
 
 	void *data = zmq_msg_data(&message);
 	bool parse_result = imuData.ParseFromArray(data, zmq_msg_size(&message));
@@ -468,10 +514,14 @@ int main(int argc, char **argv)
 	std::thread rioReceiveThread(robot_receive_loop);
 	std::thread motorSendThread(motor_transmit_loop);
 	std::thread motorConfigSendThread(motor_config_transmit_loop);
+	std::thread processOverrideHeartbeat(process_override_heartbeat_thread);
 
 	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
 	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
 	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback);
+
+	ros::Subscriber modeTuningConfig = node->subscribe("MotorTuningConfiguration", 100, motorTuningConfigCallback);
+	ros::Subscriber modeTuningControl = node->subscribe("MotorTuningControl", 100, motorTuningControlCallback);
 
 	ros::spin();
 
