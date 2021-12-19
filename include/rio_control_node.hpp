@@ -18,4 +18,4 @@ static constexpr OverrideModeStruct NORMAL_OPERATION_MODE = {OVERRIDE_MODE::NORM
 
 //Frequency of update in Hz
 #define OVERRIDE_HEARTBEAT_RATE 10
-static constexpr uint32_t DEFAULT_OVERRIDE_TIMEOUT = 2 * OVERRIDE_HEARTBEAT_RATE; //2 Second default timeout
+static constexpr uint32_t DEFAULT_OVERRIDE_TIMEOUT = (0.5 * OVERRIDE_HEARTBEAT_RATE); //0.5 Second default timeout

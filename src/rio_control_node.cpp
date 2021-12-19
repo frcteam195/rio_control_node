@@ -29,8 +29,8 @@
 #include <rio_control_node/Motor_Configuration.h>
 #include <rio_control_node/Cal_Override_Mode.h>
 
-// #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
-#define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
+#define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
+//#define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
 
 void *context;
 
