@@ -80,7 +80,7 @@ void process_override_heartbeat_thread()
 void processMotorConfigMsg(const rio_control_node::Motor_Configuration &msg)
 {
 	std::lock_guard<std::mutex> lock(motor_config_mutex);
-	for (int i = 0; i < msg.motors.size(); i++)
+	for (size_t i = 0; i < msg.motors.size(); i++)
 	{
 		rio_control_node::Motor_Config updated_motor;
 		updated_motor = msg.motors[i];
@@ -212,7 +212,7 @@ static std::map<int32_t, MotorTracker> motor_control_map;
 void processMotorControlMsg(const rio_control_node::Motor_Control &msg)
 {
 	std::lock_guard<std::mutex> lock(motor_control_mutex);
-	for (int i = 0; i < msg.motors.size(); i++)
+	for (size_t i = 0; i < msg.motors.size(); i++)
 	{
 		rio_control_node::Motor updated_motor;
 		updated_motor.id = msg.motors[i].id;
@@ -453,7 +453,7 @@ void robot_receive_loop()
 
 	memset(buffer, 0, 10000);
 
-	ROS_INFO("WOOGITY WOOGITY WOO %d %d %d", context, subscriber, rc);
+	ROS_INFO("WOOGITY WOOGITY WOO %lx %lx %d", (uint64_t)context, (uint64_t)subscriber, rc);
 
 	while (ros::ok())
 	{
