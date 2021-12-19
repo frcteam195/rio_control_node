@@ -528,6 +528,11 @@ int main(int argc, char **argv)
 	ros::Subscriber modeTuningControl = node->subscribe("MotorTuningControl", 100, motorTuningControlCallback);
 
 	ros::spin();
+	
+	rioReceiveThread.join();
+	motorSendThread.join();
+	motorConfigSendThread.join();
+	processOverrideHeartbeat.join();
 
 	return 0;
 }
