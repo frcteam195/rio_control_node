@@ -222,12 +222,11 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 include(FindProtobuf)
-find_package(Protobuf REQUIRED)
+find_package(Protobuf 3.18.0.0 EXACT REQUIRED PATHS /usr/local/lib)
 include_directories(${PROTOBUF_INCLUDE_DIR})
 
-find_package(ZeroMQ REQUIRED)
+find_package(ZeroMQ 4.3.4 EXACT REQUIRED PATHS /usr/local/lib)
 include_directories(${ZeroMQ_INCLUDE_DIR})
-
 
 file(GLOB_RECURSE executable_sources CONFIGURE_DEPENDS
      "${PROJECT_SOURCE_DIR}/src/*.cpp"
@@ -240,7 +239,7 @@ file(GLOB_RECURSE test_sources CONFIGURE_DEPENDS
 add_executable(${PROJECT_NAME} ${executable_sources})
 set_property(TARGET ${PROJECT_NAME} PROPERTY ENABLE_EXPORTS 1)
 target_include_directories(${PROJECT_NAME} PUBLIC "include")
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} Threads::Threads libzmq-static)
 
 if(ROBOT_ARCHITECTURE_X86_64)
   target_link_libraries(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/x86_64/RobotComms.a)
@@ -250,7 +249,7 @@ if(ROBOT_ARCHITECTURE_AARCH64)
   target_link_libraries(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/aarch64/RobotComms.a)
 endif(ROBOT_ARCHITECTURE_AARCH64)
 
-target_link_libraries(${PROJECT_NAME} Threads::Threads ${PROTOBUF_LIBRARY} ${ZeroMQ_LIBRARY})
+target_link_libraries(${PROJECT_NAME} ${PROTOBUF_LIBRARY})
 
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
@@ -258,21 +257,21 @@ add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp ${${PROJE
 ## Testing ##
 #############
 ## Add gtest based cpp test target and link libraries.
-add_library(t${PROJECT_NAME} ${executable_sources})
-target_include_directories(t${PROJECT_NAME} PUBLIC "include")
-target_link_libraries(t${PROJECT_NAME} ${catkin_LIBRARIES} Threads::Threads ${PROTOBUF_LIBRARY} ${ZeroMQ_LIBRARY})
-add_dependencies(t${PROJECT_NAME} ${PROJECT_NAME} ${t${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-if(ROBOT_ARCHITECTURE_X86_64)
-  target_link_libraries(t${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/x86_64/RobotComms.a)
-endif(ROBOT_ARCHITECTURE_X86_64)
+# add_library(t${PROJECT_NAME} ${executable_sources})
+# target_include_directories(t${PROJECT_NAME} PUBLIC "include")
+# target_link_libraries(t${PROJECT_NAME} ${PROTOBUF_LIBRARY} ${ZeroMQ_LIBRARY} ${catkin_LIBRARIES} Threads::Threads)
+# add_dependencies(t${PROJECT_NAME} ${PROJECT_NAME} ${t${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# if(ROBOT_ARCHITECTURE_X86_64)
+#   target_link_libraries(t${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/x86_64/RobotComms.a)
+# endif(ROBOT_ARCHITECTURE_X86_64)
 
-if(ROBOT_ARCHITECTURE_AARCH64)
-  target_link_libraries(t${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/aarch64/RobotComms.a)
-endif(ROBOT_ARCHITECTURE_AARCH64)
+# if(ROBOT_ARCHITECTURE_AARCH64)
+#   target_link_libraries(t${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/../../../third_party_libs/ROSProtoDef2022/out/aarch64/RobotComms.a)
+# endif(ROBOT_ARCHITECTURE_AARCH64)
 
-catkin_add_gtest(${PROJECT_NAME}-test ${test_sources})
-if(TARGET ${PROJECT_NAME}-test)
-  target_link_libraries(${PROJECT_NAME}-test t${PROJECT_NAME})
-  target_include_directories(${PROJECT_NAME}-test PUBLIC "include" "test/include")
-  add_dependencies(${PROJECT_NAME}-test t${PROJECT_NAME} ${t${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-endif()
+# catkin_add_gtest(${PROJECT_NAME}-test ${test_sources})
+# if(TARGET ${PROJECT_NAME}-test)
+#   target_link_libraries(${PROJECT_NAME}-test t${PROJECT_NAME})
+#   target_include_directories(${PROJECT_NAME}-test PUBLIC "include" "test/include")
+#   add_dependencies(${PROJECT_NAME}-test t${PROJECT_NAME} ${t${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# endif()
