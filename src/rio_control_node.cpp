@@ -51,6 +51,52 @@ static std::map<int32_t, MotorConfigTracker> motor_config_map;
 
 static OverrideModeStruct overrideModeS = NORMAL_OPERATION_MODE;
 
+
+
+static std::vector<float> gear_ratio_to_output_shaft;
+static std::vector<float> motor_ticks_per_revolution;
+static std::vector<float> motor_ticks_velocity_sample_window;
+
+void load_config_params()
+{
+    bool received_data = false;
+    received_data = node->getParam("/rio_control_node/gear_ratio_to_output_shaft", gear_ratio_to_output_shaft);
+    if(!received_data)
+    {
+        ROS_ERROR("COULD NOT LOAD GEAR RATIOS, using 1.0");
+        for(uint32_t i = 0;
+            i < 20;
+            i++)
+        {
+            gear_ratio_to_output_shaft.push_back(1.0);
+        }
+    }
+
+    received_data = node->getParam("/rio_control_node/motor_ticks_per_revolution", motor_ticks_per_revolution);
+    if(!received_data)
+    {
+        ROS_ERROR("COULD NOT LOAD ENCODER TICK COUNT, using 2048");
+        for(uint32_t i = 0;
+            i < 20;
+            i++)
+        {
+            motor_ticks_per_revolution.push_back(2048.0);
+        }
+    }
+
+    received_data = node->getParam("/rio_control_node/motor_ticks_velocity_sample_window", motor_ticks_velocity_sample_window);
+    if(!received_data)
+    {
+        ROS_ERROR("COULD NOT LOAD ENCODER SAMPLE WINDOW, using 0.1");
+        for(uint32_t i = 0;
+            i < 20;
+            i++)
+        {
+            motor_ticks_velocity_sample_window.push_back(0.1);
+        }
+    }
+}
+
 void modeOverrideCallback(const rio_control_node::Cal_Override_Mode &msg)
 {
 	std::lock_guard<std::mutex> lock(override_mode_mutex);
@@ -282,7 +328,26 @@ void motor_transmit_loop()
 				new_motor->set_control_mode((ck::MotorControl_Motor_ControlMode)(*i).second.motor.control_mode);
 				new_motor->set_controller_type((ck::MotorControl_Motor_ControllerType)(*i).second.motor.controller_type);
 				new_motor->set_id((*i).second.motor.id);
-				new_motor->set_output_value((*i).second.motor.output_value);
+
+                if ((*i).second.motor.control_mode == rio_control_node::Motor::MOTION_MAGIC ||
+                    (*i).second.motor.control_mode == rio_control_node::Motor::POSITION)
+                {
+				    new_motor->set_output_value((*i).second.motor.output_value *
+                                                gear_ratio_to_output_shaft[(*i).second.motor.id] *
+                                                motor_ticks_per_revolution[(*i).second.motor.id]);
+                }
+                else if((*i).second.motor.control_mode == rio_control_node::Motor::VELOCITY)
+                {
+				    new_motor->set_output_value((*i).second.motor.output_value *
+                                                gear_ratio_to_output_shaft[(*i).second.motor.id] *
+                                                motor_ticks_per_revolution[(*i).second.motor.id] *
+                                                60.0 *
+                                                motor_ticks_velocity_sample_window[(*i).second.motor.id]);
+                }
+                else
+                {
+				    new_motor->set_output_value((*i).second.motor.output_value);
+                }
 
 				if ((*i).second.active_time < ros::Time::now())
 				{
@@ -342,8 +407,8 @@ void process_motor_status(zmq_msg_t &message)
 			rio_control_node::Motor_Info motor_info;
 
 			motor_info.id = motor.id();
-			motor_info.sensor_position = motor.sensor_position();
-			motor_info.sensor_velocity = motor.sensor_velocity();
+			motor_info.sensor_position = motor.sensor_position() / motor_ticks_per_revolution[i] / gear_ratio_to_output_shaft[i];
+			motor_info.sensor_velocity = motor.sensor_velocity() / motor_ticks_per_revolution[i] / gear_ratio_to_output_shaft[i] / motor_ticks_velocity_sample_window[i] / 60.0;
 			motor_info.bus_voltage = motor.bus_voltage();
 			motor_info.bus_current = motor.bus_current();
 			motor_info.stator_current = motor.stator_current();
@@ -515,6 +580,8 @@ int main(int argc, char **argv)
 
 	node = &n;
 
+    load_config_params();
+
 	std::thread rioReceiveThread(robot_receive_loop);
 	std::thread motorSendThread(motor_transmit_loop);
 	std::thread motorConfigSendThread(motor_config_transmit_loop);
@@ -528,7 +595,7 @@ int main(int argc, char **argv)
 	ros::Subscriber modeTuningControl = node->subscribe("MotorTuningControl", 100, motorTuningControlCallback);
 
 	ros::spin();
-	
+
 	rioReceiveThread.join();
 	motorSendThread.join();
 	motorConfigSendThread.join();
