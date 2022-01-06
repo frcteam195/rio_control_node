@@ -12,6 +12,7 @@
 #include <map>
 #include <mutex>
 #include <iostream>
+#include <atomic>
 
 #include "RobotStatus.pb.h"
 #include "JoystickStatus.pb.h"
@@ -19,6 +20,7 @@
 #include "MotorStatus.pb.h"
 #include "MotorConfiguration.pb.h"
 #include "IMUData.pb.h"
+#include <signal.h>
 
 #include <rio_control_node/Joystick_Status.h>
 #include <rio_control_node/Robot_Status.h>
@@ -33,6 +35,7 @@
 //#define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
 
 void *context;
+std::atomic<bool> sigintCalled;
 
 ros::NodeHandle *node;
 
@@ -559,6 +562,13 @@ void robot_receive_loop()
 	}
 }
 
+void sigint_handler(int sig)
+{
+	(void)sig;
+	sigintCalled = true;
+	ros::shutdown();
+}
+
 int main(int argc, char **argv)
 {
 	/**
@@ -571,12 +581,14 @@ int main(int argc, char **argv)
    * You must call one of the versions of ros::init() before using any other
    * part of the ROS system.
    */
-	ros::init(argc, argv, "rio_control_node");
+	ros::init(argc, argv, "rio_control_node", ros::init_options::NoSigintHandler);
 	// GOOGLE_PROTOBUF_VERIFY_VERSION;
 
 	context = zmq_ctx_new();
 
 	ros::NodeHandle n;
+	sigintCalled = false;
+	signal(SIGINT, sigint_handler);
 
 	node = &n;
 
@@ -596,10 +608,15 @@ int main(int argc, char **argv)
 
 	ros::spin();
 
-	rioReceiveThread.join();
 	motorSendThread.join();
 	motorConfigSendThread.join();
 	processOverrideHeartbeat.join();
+	if (sigintCalled)
+	{
+		//Send sigterm due to blocking zmq call when exiting roslaunch
+		kill(getpid(), SIGTERM);
+	}
+	rioReceiveThread.join();
 
 	return 0;
 }
