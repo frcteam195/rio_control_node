@@ -500,6 +500,7 @@ void process_imu_data(zmq_msg_t &message)
 			imuSensorDataRosMsg.yaw = imuSensorData.yaw();
 			imuSensorDataRosMsg.pitch = imuSensorData.pitch();
 			imuSensorDataRosMsg.roll = imuSensorData.roll();
+			imuSensorDataRosMsg.yawrate = imuSensorData.yawrate();
 			imuDataRosMsg.imuData.push_back(imuSensorDataRosMsg);
 		}
 		imu_data_pub.publish(imuDataRosMsg);
