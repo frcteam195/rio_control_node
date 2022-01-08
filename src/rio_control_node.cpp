@@ -487,7 +487,7 @@ void process_robot_status(zmq_msg_t &message)
 void process_imu_data(zmq_msg_t &message)
 {
 	static ck::IMUData imuData;
-	static ros::Publisher imu_data_pub = node->advertise<rio_control_node::IMU_Data>("IMUData", 1);
+	static ros::Publisher imu_data_pub = node->advertise<nav_msgs::Odometry>("/RobotIMU", 1);
 
 	void *data = zmq_msg_data(&message);
 	bool parse_result = imuData.ParseFromArray(data, zmq_msg_size(&message));
