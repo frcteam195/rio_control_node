@@ -536,6 +536,11 @@ void process_imu_data(zmq_msg_t &message)
             const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
             tf2::Quaternion imu_quaternion;
             imu_quaternion.setRPY(imuSensorData.roll(),imuSensorData.pitch(),imuSensorData.yaw());
+
+            odometry_data.pose.pose.orientation.w = imu_quaternion.getW();
+            odometry_data.pose.pose.orientation.x = imu_quaternion.getX();
+            odometry_data.pose.pose.orientation.y = imu_quaternion.getY();
+            odometry_data.pose.pose.orientation.z = imu_quaternion.getZ();
 		}
 		imu_data_pub.publish(odometry_data);
 	}
