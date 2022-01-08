@@ -336,14 +336,14 @@ void motor_transmit_loop()
                     (*i).second.motor.control_mode == rio_control_node::Motor::POSITION)
                 {
 				    new_motor->set_output_value((*i).second.motor.output_value *
-                                                gear_ratio_to_output_shaft[(*i).second.motor.id] *
-                                                motor_ticks_per_revolution[(*i).second.motor.id]);
+                                                gear_ratio_to_output_shaft[(*i).second.motor.id-1] *
+                                                motor_ticks_per_revolution[(*i).second.motor.id-1]);
                 }
                 else if((*i).second.motor.control_mode == rio_control_node::Motor::VELOCITY)
                 {
 				    new_motor->set_output_value((*i).second.motor.output_value *
-                                                gear_ratio_to_output_shaft[(*i).second.motor.id] *
-                                                motor_ticks_per_revolution[(*i).second.motor.id] *
+                                                gear_ratio_to_output_shaft[(*i).second.motor.id-1] *
+                                                motor_ticks_per_revolution[(*i).second.motor.id-1] *
                                                 60.0 *
                                                 motor_ticks_velocity_sample_window[(*i).second.motor.id]);
                 }
@@ -410,8 +410,8 @@ void process_motor_status(zmq_msg_t &message)
 			rio_control_node::Motor_Info motor_info;
 
 			motor_info.id = motor.id();
-			motor_info.sensor_position = motor.sensor_position() / motor_ticks_per_revolution[i] / gear_ratio_to_output_shaft[i];
-			motor_info.sensor_velocity = motor.sensor_velocity() / motor_ticks_per_revolution[i] / gear_ratio_to_output_shaft[i] / motor_ticks_velocity_sample_window[i] / 60.0;
+			motor_info.sensor_position = motor.sensor_position() / motor_ticks_per_revolution[motor.id()-1] / gear_ratio_to_output_shaft[motor.id()-1];
+			motor_info.sensor_velocity = (motor.sensor_velocity() / motor_ticks_per_revolution[motor.id()-1] / gear_ratio_to_output_shaft[motor.id()-1] / motor_ticks_velocity_sample_window[motor.id()-1]) * 60.0;
 			motor_info.bus_voltage = motor.bus_voltage();
 			motor_info.bus_current = motor.bus_current();
 			motor_info.stator_current = motor.stator_current();
