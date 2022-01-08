@@ -117,7 +117,7 @@ catkin_package(
 #  LIBRARIES rio_control_node
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
-   CATKIN_DEPENDS message_generation
+   CATKIN_DEPENDS message_generation nav_msgs
 )
 
 ###########

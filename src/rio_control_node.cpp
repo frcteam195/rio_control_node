@@ -13,6 +13,7 @@
 #include <mutex>
 #include <iostream>
 #include <atomic>
+#include "tf2/LinearMath/Quaternion.h"
 
 #include "RobotStatus.pb.h"
 #include "JoystickStatus.pb.h"
@@ -22,6 +23,7 @@
 #include "IMUData.pb.h"
 #include <signal.h>
 
+#include <nav_msgs/Odometry.h>
 #include <rio_control_node/Joystick_Status.h>
 #include <rio_control_node/Robot_Status.h>
 #include <rio_control_node/Motor_Control.h>
@@ -492,18 +494,50 @@ void process_imu_data(zmq_msg_t &message)
 
 	if (parse_result)
 	{
-		rio_control_node::IMU_Data imuDataRosMsg;
+        nav_msgs::Odometry odometry_data;
+        odometry_data.header.stamp = ros::Time::now();
+        odometry_data.header.frame_id = "odom";
+        odometry_data.child_frame_id = "base_link";
+
+        odometry_data.pose.pose.orientation.w = 0;
+        odometry_data.pose.pose.orientation.x = 0;
+        odometry_data.pose.pose.orientation.y = 0;
+        odometry_data.pose.pose.orientation.z = 0;
+        odometry_data.pose.pose.position.x = 0;
+        odometry_data.pose.pose.position.y = 0;
+        odometry_data.pose.pose.position.z = 0;
+
+        odometry_data.twist.twist.linear.x = 0;
+        odometry_data.twist.twist.linear.y = 0;
+        odometry_data.twist.twist.linear.z = 0;
+
+        odometry_data.twist.twist.angular.x = 0;
+        odometry_data.twist.twist.angular.y = 0;
+        odometry_data.twist.twist.angular.z = 0;
+
+        odometry_data.pose.covariance =
+        { 0.001, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.001, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.001, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.001, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.001, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.001,};
+
+        odometry_data.twist.covariance =
+        { 0.001, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.001, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.001, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.001, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.001, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.001,};
+
 		for (int i = 0; i < imuData.imu_sensor_size(); i++)
 		{
-			const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
-			rio_control_node::IMU_Sensor_Data imuSensorDataRosMsg;
-			imuSensorDataRosMsg.yaw = imuSensorData.yaw();
-			imuSensorDataRosMsg.pitch = imuSensorData.pitch();
-			imuSensorDataRosMsg.roll = imuSensorData.roll();
-			imuSensorDataRosMsg.yawrate = imuSensorData.yawrate();
-			imuDataRosMsg.imuData.push_back(imuSensorDataRosMsg);
+            const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
+            tf2::Quaternion imu_quaternion;
+            imu_quaternion.setRPY(imuSensorData.roll(),imuSensorData.pitch(),imuSensorData.yaw());
 		}
-		imu_data_pub.publish(imuDataRosMsg);
+		imu_data_pub.publish(odometry_data);
 	}
 }
 
