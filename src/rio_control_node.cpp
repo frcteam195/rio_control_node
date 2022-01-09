@@ -521,7 +521,7 @@ void process_imu_data(zmq_msg_t &message)
             0.0, 0.0, 0.001, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.001, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.001, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.001,};
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.00001,};
 
         odometry_data.twist.covariance =
         { 0.001, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -541,6 +541,10 @@ void process_imu_data(zmq_msg_t &message)
             odometry_data.pose.pose.orientation.x = imu_quaternion.getX();
             odometry_data.pose.pose.orientation.y = imu_quaternion.getY();
             odometry_data.pose.pose.orientation.z = imu_quaternion.getZ();
+
+			odometry_data.pose.pose.position.x = imuSensorData.yaw();
+			odometry_data.pose.pose.position.y = imuSensorData.pitch();
+			odometry_data.pose.pose.position.z = imuSensorData.roll();
 		}
 		imu_data_pub.publish(odometry_data);
 	}
