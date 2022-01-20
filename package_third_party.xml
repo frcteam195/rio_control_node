@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<package format="2">
+    <!-- List third party library dependencies here -->
+    <build_depend>ROSProtoDef2022</build_depend>
+</package>
