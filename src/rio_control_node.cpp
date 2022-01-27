@@ -345,7 +345,7 @@ void motor_transmit_loop()
                 {
 				    new_motor->set_output_value((*i).second.motor.output_value *
                                                 gear_ratio_to_output_shaft[(*i).second.motor.id-1] *
-                                                motor_ticks_per_revolution[(*i).second.motor.id-1] *
+                                                motor_ticks_per_revolution[(*i).second.motor.id-1] /
                                                 60.0 *
                                                 motor_ticks_velocity_sample_window[(*i).second.motor.id]);
                 }
