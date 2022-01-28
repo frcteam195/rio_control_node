@@ -61,6 +61,10 @@ add_message_files(
   IMU_Sensor_Data.msg
   IMU_Data.msg
   Cal_Override_Mode.msg
+  Solenoid.msg
+  Solenoid_Info.msg
+  Solenoid_Control.msg
+  Solenoid_Status.msg
 )
 
 ## Generate services in the 'srv' folder

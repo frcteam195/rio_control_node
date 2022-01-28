@@ -17,6 +17,8 @@
 
 #include "RobotStatus.pb.h"
 #include "JoystickStatus.pb.h"
+#include "SolenoidControl.pb.h"
+#include "SolenoidStatus.pb.h"
 #include "MotorControl.pb.h"
 #include "MotorStatus.pb.h"
 #include "MotorConfiguration.pb.h"
@@ -32,6 +34,8 @@
 #include <rio_control_node/IMU_Sensor_Data.h>
 #include <rio_control_node/Motor_Configuration.h>
 #include <rio_control_node/Cal_Override_Mode.h>
+#include <rio_control_node/Solenoid_Control.h>
+#include <rio_control_node/Solenoid_Status.h>
 
 #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
 //#define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
@@ -248,6 +252,136 @@ void motor_config_transmit_loop()
 		rate.sleep();
 	}
 }
+
+std::mutex solenoid_control_mutex;
+class SolenoidTracker
+{
+public:
+	rio_control_node::Solenoid solenoid;
+	ros::Time active_time;
+};
+
+static std::map<int32_t, SolenoidTracker> solenoid_control_map;
+
+void solenoidControlCallback(const rio_control_node::Solenoid_Control &msg)
+{
+	std::lock_guard<std::mutex> lock(solenoid_control_mutex);
+	for (size_t i = 0; i < msg.solenoids.size(); i++)
+	{
+		rio_control_node::Solenoid updated_solenoid;
+		updated_solenoid.id = msg.solenoids[i].id;
+		updated_solenoid.output_value = msg.solenoids[i].output_value;
+		updated_solenoid.module_type = msg.solenoids[i].module_type;
+		updated_solenoid.solenoid_type = msg.solenoids[i].solenoid_type;
+
+		SolenoidTracker updated_tracked_solenoid;
+		updated_tracked_solenoid.solenoid = updated_solenoid;
+		updated_tracked_solenoid.active_time = ros::Time::now() + ros::Duration(MOTOR_CONTROL_TIMEOUT);
+
+		solenoid_control_map[msg.solenoids[i].id] = updated_tracked_solenoid;
+	}
+}
+
+void solenoid_transmit_loop()
+{
+	void *publisher = zmq_socket(context, ZMQ_RADIO);
+
+	int rc = zmq_connect(publisher, ROBOT_CONNECT_STRING);
+
+	if (rc < 0)
+	{
+		ROS_INFO("Failed to initialize solenoid publisher");
+	}
+
+	char buffer[10000];
+
+	memset(buffer, 0, 10000);
+
+	ros::Rate rate(100);
+
+	while (ros::ok())
+	{
+		{
+			std::lock_guard<std::mutex> lock(solenoid_control_mutex);
+			static ck::SolenoidControl solenoid_control;
+			solenoid_control.clear_solenoids();
+			solenoid_control.Clear();
+
+			std::vector<std::map<int32_t, SolenoidTracker>::iterator> timed_out_solenoid_list;
+
+			for (std::map<int32_t, SolenoidTracker>::iterator i = solenoid_control_map.begin();
+				 i != solenoid_control_map.end();
+				 i++)
+			{
+				ck::SolenoidControl::Solenoid *new_solenoid = solenoid_control.add_solenoids();
+
+				new_solenoid->set_id((*i).second.solenoid.id);
+				new_solenoid->set_module_type((ck::SolenoidControl::Solenoid::ModuleType)(*i).second.solenoid.module_type);
+				new_solenoid->set_solenoid_type((ck::SolenoidControl::Solenoid::SolenoidType)(*i).second.solenoid.solenoid_type);
+				new_solenoid->set_output_value((ck::SolenoidControl::Solenoid::SolenoidValue)((*i).second.solenoid.output_value));
+
+				if ((*i).second.active_time < ros::Time::now())
+				{
+					timed_out_solenoid_list.push_back(i);
+				}
+			}
+
+			for (std::vector<std::map<int32_t, SolenoidTracker>::iterator>::iterator i = timed_out_solenoid_list.begin();
+				 i != timed_out_solenoid_list.end();
+				 i++)
+			{
+				solenoid_control_map.erase((*i));
+			}
+
+			bool serialize_status = solenoid_control.SerializeToArray(buffer, 10000);
+
+			if (!serialize_status)
+			{
+				ROS_INFO("Failed to serialize solenoid status!!");
+			}
+			else
+			{
+				zmq_msg_t message;
+				zmq_msg_init_size(&message, solenoid_control.ByteSizeLong());
+				memcpy(zmq_msg_data(&message), buffer, solenoid_control.ByteSizeLong());
+				zmq_msg_set_group(&message, "solenoidcontrol");
+				// std::cout << "Sending message..." << std::endl;
+				zmq_msg_send(&message, publisher, 0);
+				zmq_msg_close(&message);
+			}
+		}
+
+		rate.sleep();
+	}
+}
+
+
+void process_solenoid_status(zmq_msg_t &message)
+{
+	static ros::Publisher solenoid_status_pub = node->advertise<rio_control_node::Solenoid_Status>("SolenoidStatus", 1);
+	static ck::SolenoidStatus status;
+
+	void *data = zmq_msg_data(&message);
+	bool parse_result = status.ParseFromArray(data, zmq_msg_size(&message));
+	if (parse_result)
+	{
+
+		rio_control_node::Solenoid_Status solenoid_status;
+
+		for (int i = 0; i < status.solenoids_size(); i++)
+		{
+			const ck::SolenoidStatus::Solenoid &solenoid = status.solenoids(i);
+			rio_control_node::Solenoid_Info solenoid_info;
+
+			solenoid_info.id = solenoid.id();
+			solenoid_info.solenoid_value = solenoid.solenoid_value();
+
+			solenoid_status.solenoids.push_back(solenoid_info);
+		}
+		solenoid_status_pub.publish(solenoid_status);
+	}
+}
+
 
 std::mutex motor_control_mutex;
 
@@ -597,6 +731,11 @@ void robot_receive_loop()
 			process_imu_data(message);
 		}
 		break;
+		case str2int("solenoidstatus"):
+		{
+			process_solenoid_status(message);
+		}
+		break;
 		default:
 			ROS_INFO("Got unrecognized message: %s", message_group.c_str());
 			break;
@@ -640,12 +779,15 @@ int main(int argc, char **argv)
 
 	std::thread rioReceiveThread(robot_receive_loop);
 	std::thread motorSendThread(motor_transmit_loop);
+	std::thread solenoidSendThread(solenoid_transmit_loop);
 	std::thread motorConfigSendThread(motor_config_transmit_loop);
 	std::thread processOverrideHeartbeat(process_override_heartbeat_thread);
 
 	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
 	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
 	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback);
+
+	ros::Subscriber solenoidControl = node->subscribe("SolenoidControl", 100, solenoidControlCallback);
 
 	ros::Subscriber modeTuningConfig = node->subscribe("MotorTuningConfiguration", 100, motorTuningConfigCallback);
 	ros::Subscriber modeTuningControl = node->subscribe("MotorTuningControl", 100, motorTuningControlCallback);
