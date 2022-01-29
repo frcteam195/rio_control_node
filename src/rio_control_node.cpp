@@ -40,6 +40,17 @@
 #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
 //#define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
 
+
+#define STR_PARAM(s) #s
+#define CKSP(s) ckgp( STR_PARAM(s) )
+std::string ckgp(std::string instr)
+{
+	std::string retVal = ros::this_node::getName();
+	retVal += "/" + instr;
+	return retVal;
+}
+
+
 void *context;
 std::atomic<bool> sigintCalled;
 
@@ -69,7 +80,7 @@ static std::vector<float> motor_ticks_velocity_sample_window;
 void load_config_params()
 {
     bool received_data = false;
-    received_data = node->getParam("/rio_control_node/gear_ratio_to_output_shaft", gear_ratio_to_output_shaft);
+    received_data = node->getParam(CKSP(gear_ratio_to_output_shaft), gear_ratio_to_output_shaft);
     if(!received_data)
     {
         ROS_ERROR("COULD NOT LOAD GEAR RATIOS, using 1.0");
@@ -81,7 +92,7 @@ void load_config_params()
         }
     }
 
-    received_data = node->getParam("/rio_control_node/motor_ticks_per_revolution", motor_ticks_per_revolution);
+    received_data = node->getParam(CKSP(motor_ticks_per_revolution), motor_ticks_per_revolution);
     if(!received_data)
     {
         ROS_ERROR("COULD NOT LOAD ENCODER TICK COUNT, using 2048");
@@ -93,7 +104,7 @@ void load_config_params()
         }
     }
 
-    received_data = node->getParam("/rio_control_node/motor_ticks_velocity_sample_window", motor_ticks_velocity_sample_window);
+    received_data = node->getParam(CKSP(motor_ticks_velocity_sample_window), motor_ticks_velocity_sample_window);
     if(!received_data)
     {
         ROS_ERROR("COULD NOT LOAD ENCODER SAMPLE WINDOW, using 0.1");
