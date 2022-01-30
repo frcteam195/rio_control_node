@@ -4,3 +4,5 @@ float64 sensor_velocity
 float64 bus_voltage
 float64 bus_current
 float64 stator_current
+bool forward_limit_closed
+bool reverse_limit_closed

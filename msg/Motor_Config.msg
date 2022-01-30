@@ -10,6 +10,16 @@ int8 INVERT_MOTOR_OUTPUT=1
 int8 FOLLOW_MASTER=2
 int8 OPPOSE_MASTER=3
 
+int8 LIMITSWITCHSOURCE_FEEDBACKCONNECTOR = 0
+int8 LIMITSWITCHSOURCE_REMOTETALON = 1
+int8 LIMITSWITCHSOURCE_REMOTETALONSRX = 1
+int8 LIMITSWITCHSOURCE_REMOTECANIFIER = 2
+int8 LIMITSWITCHSOURCE_DEACTIVATED = 3
+
+int8 LIMITSWITCHNORMAL_NORMALLYOPEN = 0
+int8 LIMITSWITCHNORMAL_NORMALLYCLOSED = 1
+int8 LIMITSWITCHNORMAL_DISABLED = 2
+
 int8 EEPROM_SETTING=0
 int8 COAST=1
 int8 BRAKE=2
@@ -43,3 +53,7 @@ float64 open_loop_ramp
 float64 closed_loop_ramp
 Current_Limit_Configuration supply_current_limit_config
 Current_Limit_Configuration stator_current_limit_config
+int8 forward_limit_switch_source
+int8 forward_limit_switch_normal
+int8 reverse_limit_switch_source
+int8 reverse_limit_switch_normal
