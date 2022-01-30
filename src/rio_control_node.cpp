@@ -241,10 +241,10 @@ void motor_config_transmit_loop()
 				stator_limit->set_trigger_threshold_current((*i).second.motor.stator_current_limit_config.trigger_threshold_current);
 				stator_limit->set_trigger_threshold_time((*i).second.motor.stator_current_limit_config.trigger_threshold_time);
 				new_motor->set_allocated_supply_current_limit_config(stator_limit);
-				new_motor->set_forward_limit_switch_source((ck::MotorConfiguration::Motor::LimitSwitchSource)(*i).second.motor.forward_limit_switch_source);
-				new_motor->set_forward_limit_switch_normal((ck::MotorConfiguration::Motor::LimitSwitchNormal)(*i).second.motor.forward_limit_switch_normal);
-				new_motor->set_reverse_limit_switch_source((ck::MotorConfiguration::Motor::LimitSwitchSource)(*i).second.motor.reverse_limit_switch_source);
-				new_motor->set_reverse_limit_switch_normal((ck::MotorConfiguration::Motor::LimitSwitchNormal)(*i).second.motor.reverse_limit_switch_normal);
+				new_motor->set_forward_limit_switch_source((ck::MotorConfiguration::Motor::LimitSwitchSource)((*i).second.motor.forward_limit_switch_source));
+				new_motor->set_forward_limit_switch_normal((ck::MotorConfiguration::Motor::LimitSwitchNormal)((*i).second.motor.forward_limit_switch_normal));
+				new_motor->set_reverse_limit_switch_source((ck::MotorConfiguration::Motor::LimitSwitchSource)((*i).second.motor.reverse_limit_switch_source));
+				new_motor->set_reverse_limit_switch_normal((ck::MotorConfiguration::Motor::LimitSwitchNormal)((*i).second.motor.reverse_limit_switch_normal));
 			}
 
 			bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
