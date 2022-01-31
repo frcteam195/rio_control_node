@@ -543,6 +543,17 @@ constexpr unsigned int str2int(const char *str, int h = 0)
 	return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
 }
 
+double convertNativeUnitsToPosition(double nativeUnits, int motorID)
+{
+	return nativeUnits / motor_ticks_per_revolution[motorID-1] / gear_ratio_to_output_shaft[motorID-1];
+}
+
+double convertNativeUnitsToVelocity(double nativeUnits, int motorID)
+{
+	return (nativeUnits / motor_ticks_per_revolution[motorID-1] / gear_ratio_to_output_shaft[motorID-1] / motor_ticks_velocity_sample_window[motorID-1]) * 60.0;
+}
+
+
 void process_motor_status(zmq_msg_t &message)
 {
 	static ros::Publisher motor_status_pub = node->advertise<rio_control_node::Motor_Status>("MotorStatus", 1);
@@ -561,13 +572,39 @@ void process_motor_status(zmq_msg_t &message)
 			rio_control_node::Motor_Info motor_info;
 
 			motor_info.id = motor.id();
-			motor_info.sensor_position = motor.sensor_position() / motor_ticks_per_revolution[motor.id()-1] / gear_ratio_to_output_shaft[motor.id()-1];
-			motor_info.sensor_velocity = (motor.sensor_velocity() / motor_ticks_per_revolution[motor.id()-1] / gear_ratio_to_output_shaft[motor.id()-1] / motor_ticks_velocity_sample_window[motor.id()-1]) * 60.0;
+			motor_info.sensor_position = convertNativeUnitsToPosition(motor.sensor_position(), motor.id());
+			motor_info.sensor_velocity = convertNativeUnitsToVelocity(motor.sensor_velocity(), motor.id());
 			motor_info.bus_voltage = motor.bus_voltage();
 			motor_info.bus_current = motor.bus_current();
 			motor_info.stator_current = motor.stator_current();
 			motor_info.forward_limit_closed = motor.forward_limit_closed();
 			motor_info.reverse_limit_closed = motor.reverse_limit_closed();
+			motor_info.control_mode = (int8_t)motor.control_mode();
+			switch (motor_info.control_mode)
+			{
+			case rio_control_node::Motor_Info::POSITION:
+			case rio_control_node::Motor_Info::MOTION_MAGIC:
+			case rio_control_node::Motor_Info::MOTION_PROFILE:
+			case rio_control_node::Motor_Info::MOTION_PROFILE_ARC:
+			{
+				motor_info.commanded_output = convertNativeUnitsToPosition(motor.commanded_output(), motor.id());
+			}
+				break;
+			case rio_control_node::Motor_Info::VELOCITY:
+			{
+				motor_info.commanded_output = convertNativeUnitsToVelocity(motor.commanded_output(), motor.id());
+			}
+				break;
+			case rio_control_node::Motor_Info::CURRENT:
+			case rio_control_node::Motor_Info::FOLLOWER:
+			case rio_control_node::Motor_Info::PERCENT_OUTPUT:
+			case rio_control_node::Motor_Info::MUSIC_TONE:
+			case rio_control_node::Motor_Info::DISABLED:
+			{
+				motor_info.commanded_output = motor.commanded_output();
+			}
+				break;
+			}
 
 			motor_status.motors.push_back(motor_info);
 		}

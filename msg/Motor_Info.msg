@@ -1,3 +1,14 @@
+int8 PERCENT_OUTPUT=0
+int8 POSITION=1
+int8 VELOCITY=2
+int8 CURRENT=3
+int8 FOLLOWER=5
+int8 MOTION_PROFILE=6
+int8 MOTION_MAGIC=7
+int8 MOTION_PROFILE_ARC=10
+int8 MUSIC_TONE=13
+int8 DISABLED=15
+
 int32 id
 float64 sensor_position
 float64 sensor_velocity
@@ -6,3 +17,5 @@ float64 bus_current
 float64 stator_current
 bool forward_limit_closed
 bool reverse_limit_closed
+int8 control_mode
+float64 commanded_output
