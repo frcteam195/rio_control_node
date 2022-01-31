@@ -245,6 +245,8 @@ void motor_config_transmit_loop()
 				new_motor->set_forward_limit_switch_normal((ck::MotorConfiguration::Motor::LimitSwitchNormal)((*i).second.motor.forward_limit_switch_normal));
 				new_motor->set_reverse_limit_switch_source((ck::MotorConfiguration::Motor::LimitSwitchSource)((*i).second.motor.reverse_limit_switch_source));
 				new_motor->set_reverse_limit_switch_normal((ck::MotorConfiguration::Motor::LimitSwitchNormal)((*i).second.motor.reverse_limit_switch_normal));
+				new_motor->set_peak_output_forward((*i).second.motor.peak_output_forward);
+				new_motor->set_peak_output_reverse((*i).second.motor.peak_output_reverse);
 			}
 
 			bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
