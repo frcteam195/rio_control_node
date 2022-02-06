@@ -19,3 +19,10 @@ bool forward_limit_closed
 bool reverse_limit_closed
 int8 control_mode
 float64 commanded_output
+float64 active_trajectory_arbff
+float64 active_trajectory_position
+float64 active_trajectory_velocity
+float64 raw_closed_loop_error
+float64 raw_integral_accum
+float64 raw_error_derivative
+float64 raw_output_percent

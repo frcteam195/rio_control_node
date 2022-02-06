@@ -582,6 +582,13 @@ void process_motor_status(zmq_msg_t &message)
 			motor_info.forward_limit_closed = motor.forward_limit_closed();
 			motor_info.reverse_limit_closed = motor.reverse_limit_closed();
 			motor_info.control_mode = (int8_t)motor.control_mode();
+			motor_info.active_trajectory_arbff = motor.active_trajectory_arbff();
+			motor_info.active_trajectory_position = motor.active_trajectory_position();
+			motor_info.active_trajectory_velocity = motor.active_trajectory_velocity();
+			motor_info.raw_closed_loop_error = motor.raw_closed_loop_error();
+			motor_info.raw_error_derivative = motor.raw_error_derivative();
+			motor_info.raw_integral_accum = motor.raw_integral_accum();
+			motor_info.raw_output_percent = motor.raw_output_percent();
 			switch (motor_info.control_mode)
 			{
 			case rio_control_node::Motor_Info::POSITION:
