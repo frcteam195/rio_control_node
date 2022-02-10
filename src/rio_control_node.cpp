@@ -56,7 +56,7 @@ std::atomic<bool> sigintCalled;
 
 ros::NodeHandle *node;
 
-constexpr float MOTOR_CONTROL_TIMEOUT = 0.2;
+constexpr float MOTOR_CONTROL_TIMEOUT = 1.0;
 
 std::mutex override_mode_mutex;
 std::mutex motor_config_mutex;
