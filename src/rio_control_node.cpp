@@ -560,7 +560,7 @@ void motor_transmit_loop()
 			{
                 overall_motor_control.motors.push_back((*i).second.motor);
             }
-            static ros::Publisher overall_control_publisher = node->advertise<rio_control_node::Motor_Configuration>("/MotorControlFinal", 10);
+            static ros::Publisher overall_control_publisher = node->advertise<rio_control_node::Motor_Control>("/MotorControlFinal", 10);
             overall_control_publisher.publish(overall_motor_control);
         }
 
