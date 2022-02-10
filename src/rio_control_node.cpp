@@ -416,18 +416,22 @@ void processMotorControlMsg(const rio_control_node::Motor_Control &msg)
 	std::lock_guard<std::mutex> lock(motor_control_mutex);
 	for (size_t i = 0; i < msg.motors.size(); i++)
 	{
-		rio_control_node::Motor updated_motor;
-		updated_motor.id = msg.motors[i].id;
-		updated_motor.output_value = msg.motors[i].output_value;
-		updated_motor.controller_type = msg.motors[i].controller_type;
-		updated_motor.control_mode = msg.motors[i].control_mode;
-		updated_motor.arbitrary_feedforward = msg.motors[i].arbitrary_feedforward;
+		if(msg.motors[i].control_mode != rio_control_node::Motor::FOLLOWER ||
+		   motor_control_map.find((int32_t) msg.motors[i].output_value) != motor_control_map.end())
+		{
+			rio_control_node::Motor updated_motor;
+			updated_motor.id = msg.motors[i].id;
+			updated_motor.output_value = msg.motors[i].output_value;
+			updated_motor.controller_type = msg.motors[i].controller_type;
+			updated_motor.control_mode = msg.motors[i].control_mode;
+			updated_motor.arbitrary_feedforward = msg.motors[i].arbitrary_feedforward;
 
-		MotorTracker updated_tracked_motor;
-		updated_tracked_motor.motor = updated_motor;
-		updated_tracked_motor.active_time = ros::Time::now() + ros::Duration(MOTOR_CONTROL_TIMEOUT);
+			MotorTracker updated_tracked_motor;
+			updated_tracked_motor.motor = updated_motor;
+			updated_tracked_motor.active_time = ros::Time::now() + ros::Duration(MOTOR_CONTROL_TIMEOUT);
 
-		motor_control_map[msg.motors[i].id] = updated_tracked_motor;
+			motor_control_map[msg.motors[i].id] = updated_tracked_motor;
+		}
 	}
 }
 
