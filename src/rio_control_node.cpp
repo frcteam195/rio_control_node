@@ -265,6 +265,18 @@ void motor_config_transmit_loop()
 				zmq_msg_close(&message);
 			}
 		}
+        {
+			std::lock_guard<std::mutex> lock(motor_config_mutex);
+            rio_control_node::Motor_Configuration overall_motor_config;
+			for (std::map<int32_t, MotorConfigTracker>::iterator i = motor_config_map.begin();
+				 i != motor_config_map.end();
+				 i++)
+			{
+                overall_motor_config.motors.push_back((*i).second.motor);
+            }
+            static ros::Publisher overall_config_publisher = node->advertise<rio_control_node::Motor_Configuration>("/MotorConfigurationFinal", 10);
+            overall_config_publisher.publish(overall_motor_config);
+        }
 
 		rate.sleep();
 	}
@@ -539,6 +551,18 @@ void motor_transmit_loop()
 				zmq_msg_close(&message);
 			}
 		}
+        {
+			std::lock_guard<std::mutex> lock(motor_control_mutex);
+            rio_control_node::Motor_Control overall_motor_control;
+			for (std::map<int32_t, MotorTracker>::iterator i = motor_control_map.begin();
+				 i != motor_control_map.end();
+				 i++)
+			{
+                overall_motor_control.motors.push_back((*i).second.motor);
+            }
+            static ros::Publisher overall_control_publisher = node->advertise<rio_control_node::Motor_Configuration>("/MotorControlFinal", 10);
+            overall_control_publisher.publish(overall_motor_control);
+        }
 
 		rate.sleep();
 	}
