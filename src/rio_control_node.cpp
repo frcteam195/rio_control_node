@@ -23,6 +23,7 @@
 #include "MotorControl.pb.h"
 #include "MotorStatus.pb.h"
 #include "MotorConfiguration.pb.h"
+#include "IMUConfig.pb.h"
 #include "IMUData.pb.h"
 #include <signal.h>
 
@@ -248,6 +249,8 @@ void motor_config_transmit_loop()
 				new_motor->set_reverse_limit_switch_normal((ck::MotorConfiguration::Motor::LimitSwitchNormal)((*i).second.motor.reverse_limit_switch_normal));
 				new_motor->set_peak_output_forward((*i).second.motor.peak_output_forward);
 				new_motor->set_peak_output_reverse((*i).second.motor.peak_output_reverse);
+				new_motor->set_can_network
+				   (ck::CANNetwork::RIO_CANIVORE);
 			}
 
 			bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
@@ -852,6 +855,29 @@ void sigint_handler(int sig)
 	ros::shutdown();
 }
 
+void imu_config_thread()
+{
+	ros::Rate rate(10);
+
+	while(ros::ok())
+	{
+		ck::IMUConfig imu_config;
+
+		ck::IMUConfig_IMUConfigData * imu_1 = imu_config.add_imu_config();
+		imu_1->set_id(1);
+		imu_1->set_imu_type
+		   (ck::IMUConfig::IMUConfigData::IMUType::IMUConfig_IMUConfigData_IMUType_PIGEON2);
+		imu_1->set_mount_pose_axis_forward
+		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveX);
+		imu_1->set_mount_pose_axis_up
+		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveZ);
+		imu_1->set_can_network
+		   (ck::CANNetwork::RIO_CANIVORE);
+		
+		rate.sleep();
+	}
+}
+
 int main(int argc, char **argv)
 {
 	/**
@@ -882,6 +908,7 @@ int main(int argc, char **argv)
 	std::thread solenoidSendThread(solenoid_transmit_loop);
 	std::thread motorConfigSendThread(motor_config_transmit_loop);
 	std::thread processOverrideHeartbeat(process_override_heartbeat_thread);
+	std::thread imuConfigThread(imu_config_thread);
 
 	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
 	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
@@ -894,15 +921,17 @@ int main(int argc, char **argv)
 
 	ros::spin();
 
+	rioReceiveThread.join();
 	motorSendThread.join();
+	solenoidSendThread.join();
 	motorConfigSendThread.join();
 	processOverrideHeartbeat.join();
+	imuConfigThread.join();
 	if (sigintCalled)
 	{
 		//Send sigterm due to blocking zmq call when exiting roslaunch
 		kill(getpid(), SIGTERM);
 	}
-	rioReceiveThread.join();
 
 	return 0;
 }
