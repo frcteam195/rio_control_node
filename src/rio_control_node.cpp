@@ -877,7 +877,7 @@ void imu_config_thread()
 		ck::IMUConfig imu_config;
 
 		ck::IMUConfig_IMUConfigData * imu_1 = imu_config.add_imu_config();
-		imu_1->set_id(1);
+		imu_1->set_id(0);
 		imu_1->set_imu_type
 		   (ck::IMUConfig::IMUConfigData::IMUType::IMUConfig_IMUConfigData_IMUType_PIGEON2);
 		imu_1->set_mount_pose_axis_forward
