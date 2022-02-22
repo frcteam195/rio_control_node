@@ -14,6 +14,7 @@
 #include <iostream>
 #include <atomic>
 #include "tf2/LinearMath/Quaternion.h"
+#include "tf2/LinearMath/Matrix3x3.h"
 
 #include "RobotStatus.pb.h"
 #include "JoystickStatus.pb.h"
@@ -759,17 +760,25 @@ void process_imu_data(zmq_msg_t &message)
 		for (int i = 0; i < imuData.imu_sensor_size(); i++)
 		{
             const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
+
+            odometry_data.pose.pose.orientation.w = imuSensorData.w();
+            odometry_data.pose.pose.orientation.x = imuSensorData.x();
+            odometry_data.pose.pose.orientation.y = imuSensorData.y();
+            odometry_data.pose.pose.orientation.z = imuSensorData.z();
+
             tf2::Quaternion imu_quaternion;
-            imu_quaternion.setRPY(imuSensorData.roll(),imuSensorData.pitch(),imuSensorData.yaw());
+			imu_quaternion.setW(imuSensorData.w());
+			imu_quaternion.setX(imuSensorData.x());
+			imu_quaternion.setY(imuSensorData.y());
+			imu_quaternion.setZ(imuSensorData.z());
 
-            odometry_data.pose.pose.orientation.w = imu_quaternion.getW();
-            odometry_data.pose.pose.orientation.x = imu_quaternion.getX();
-            odometry_data.pose.pose.orientation.y = imu_quaternion.getY();
-            odometry_data.pose.pose.orientation.z = imu_quaternion.getZ();
-
-			odometry_data.pose.pose.position.x = imuSensorData.yaw();
-			odometry_data.pose.pose.position.y = imuSensorData.pitch();
-			odometry_data.pose.pose.position.z = imuSensorData.roll();
+			tf2::Matrix3x3 imu3x3(imu_quaternion);
+			tf2Scalar yaw, pitch, roll;
+			imu3x3.getRPY(roll, pitch, yaw);
+			
+			odometry_data.pose.pose.position.x = roll;
+			odometry_data.pose.pose.position.y = pitch;
+			odometry_data.pose.pose.position.z = yaw;
 		}
 		imu_data_pub.publish(odometry_data);
 	}
