@@ -891,7 +891,7 @@ void imu_config_thread()
 
 		if (!serialize_status)
 		{
-			ROS_INFO("Failed to serialize solenoid status!!");
+			ROS_INFO("Failed to serialize imu config!!");
 		}
 		else
 		{
