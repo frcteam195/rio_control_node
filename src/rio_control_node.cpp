@@ -857,6 +857,19 @@ void sigint_handler(int sig)
 
 void imu_config_thread()
 {
+	void *publisher = zmq_socket(context, ZMQ_RADIO);
+
+	int rc = zmq_connect(publisher, ROBOT_CONNECT_STRING);
+
+	if (rc < 0)
+	{
+		ROS_INFO("Failed to initialize motor publisher");
+	}
+
+	char buffer[10000];
+
+	memset(buffer, 0, 10000);
+
 	ros::Rate rate(10);
 
 	while(ros::ok())
@@ -873,6 +886,23 @@ void imu_config_thread()
 		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveZ);
 		imu_1->set_can_network
 		   (ck::CANNetwork::RIO_CANIVORE);
+
+		bool serialize_status = imu_config.SerializeToArray(buffer, 10000);
+
+		if (!serialize_status)
+		{
+			ROS_INFO("Failed to serialize solenoid status!!");
+		}
+		else
+		{
+			zmq_msg_t message;
+			zmq_msg_init_size(&message, imu_config.ByteSizeLong());
+			memcpy(zmq_msg_data(&message), buffer, imu_config.ByteSizeLong());
+			zmq_msg_set_group(&message, "imuconfig");
+			// std::cout << "Sending message..." << std::endl;
+			zmq_msg_send(&message, publisher, 0);
+			zmq_msg_close(&message);
+		}
 		
 		rate.sleep();
 	}
