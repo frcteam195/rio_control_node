@@ -432,22 +432,18 @@ void processMotorControlMsg(const rio_control_node::Motor_Control &msg)
 	std::lock_guard<std::mutex> lock(motor_control_mutex);
 	for (size_t i = 0; i < msg.motors.size(); i++)
 	{
-		if(msg.motors[i].control_mode != rio_control_node::Motor::FOLLOWER ||
-		   motor_control_map.find((int32_t) msg.motors[i].output_value) != motor_control_map.end())
-		{
-			rio_control_node::Motor updated_motor;
-			updated_motor.id = msg.motors[i].id;
-			updated_motor.output_value = msg.motors[i].output_value;
-			updated_motor.controller_type = msg.motors[i].controller_type;
-			updated_motor.control_mode = msg.motors[i].control_mode;
-			updated_motor.arbitrary_feedforward = msg.motors[i].arbitrary_feedforward;
+		rio_control_node::Motor updated_motor;
+		updated_motor.id = msg.motors[i].id;
+		updated_motor.output_value = msg.motors[i].output_value;
+		updated_motor.controller_type = msg.motors[i].controller_type;
+		updated_motor.control_mode = msg.motors[i].control_mode;
+		updated_motor.arbitrary_feedforward = msg.motors[i].arbitrary_feedforward;
 
-			MotorTracker updated_tracked_motor;
-			updated_tracked_motor.motor = updated_motor;
-			updated_tracked_motor.active_time = ros::Time::now() + ros::Duration(MOTOR_CONTROL_TIMEOUT);
+		MotorTracker updated_tracked_motor;
+		updated_tracked_motor.motor = updated_motor;
+		updated_tracked_motor.active_time = ros::Time::now() + ros::Duration(MOTOR_CONTROL_TIMEOUT);
 
-			motor_control_map[msg.motors[i].id] = updated_tracked_motor;
-		}
+		motor_control_map[msg.motors[i].id] = updated_tracked_motor;
 	}
 }
 
@@ -764,16 +760,13 @@ void process_imu_data(zmq_msg_t &message)
 		{
             const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
 
-            odometry_data.pose.pose.orientation.w = imuSensorData.w();
-            odometry_data.pose.pose.orientation.x = imuSensorData.x();
-            odometry_data.pose.pose.orientation.y = imuSensorData.y();
-            odometry_data.pose.pose.orientation.z = imuSensorData.z();
-
             tf2::Quaternion imu_quaternion;
-			imu_quaternion.setW(imuSensorData.w());
-			imu_quaternion.setX(imuSensorData.x());
-			imu_quaternion.setY(imuSensorData.y());
-			imu_quaternion.setZ(imuSensorData.z());
+			imu_quaternion.setRPY(imuSensorData.z(), imuSensorData.y(), imuSensorData.x());
+
+            odometry_data.pose.pose.orientation.w = imu_quaternion.getW();
+            odometry_data.pose.pose.orientation.x = imu_quaternion.getX();
+            odometry_data.pose.pose.orientation.y = imu_quaternion.getY();
+            odometry_data.pose.pose.orientation.z = imu_quaternion.getZ();
 
 			tf2::Matrix3x3 imu3x3(imu_quaternion);
 			tf2Scalar yaw, pitch, roll;
@@ -881,7 +874,7 @@ void imu_config_thread()
 		imu_1->set_imu_type
 		   (ck::IMUConfig::IMUConfigData::IMUType::IMUConfig_IMUConfigData_IMUType_PIGEON2);
 		imu_1->set_mount_pose_axis_forward
-		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveX);
+		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_NegativeY);
 		imu_1->set_mount_pose_axis_up
 		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveZ);
 		imu_1->set_can_network
