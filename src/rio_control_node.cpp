@@ -145,6 +145,16 @@ void process_override_heartbeat_thread()
 
 }
 
+double convertNativeUnitsToPosition(double nativeUnits, int motorID)
+{
+	return nativeUnits / motor_ticks_per_revolution[motorID-1] / gear_ratio_to_output_shaft[motorID-1];
+}
+
+double convertNativeUnitsToVelocity(double nativeUnits, int motorID)
+{
+	return (nativeUnits / motor_ticks_per_revolution[motorID-1] / gear_ratio_to_output_shaft[motorID-1] / motor_ticks_velocity_sample_window[motorID-1]) * 60.0;
+}
+
 void processMotorConfigMsg(const rio_control_node::Motor_Configuration &msg)
 {
 	std::lock_guard<std::mutex> lock(motor_config_mutex);
@@ -219,9 +229,9 @@ void motor_config_transmit_loop()
 				new_motor->set_motion_cruise_velocity((*i).second.motor.motion_cruise_velocity);
 				new_motor->set_motion_acceleration((*i).second.motor.motion_acceleration);
 				new_motor->set_motion_s_curve_strength((*i).second.motor.motion_s_curve_strength);
-				new_motor->set_forward_soft_limit((*i).second.motor.forward_soft_limit);
+				new_motor->set_forward_soft_limit(convertNativeUnitsToPosition((*i).second.motor.forward_soft_limit, (*i).second.motor.id));
 				new_motor->set_forward_soft_limit_enable((*i).second.motor.forward_soft_limit_enable);
-				new_motor->set_reverse_soft_limit((*i).second.motor.reverse_soft_limit);
+				new_motor->set_reverse_soft_limit(convertNativeUnitsToPosition((*i).second.motor.reverse_soft_limit, (*i).second.motor.id));
 				new_motor->set_reverse_soft_limit_enable((*i).second.motor.reverse_soft_limit_enable);
 				new_motor->set_feedback_sensor_coefficient((*i).second.motor.feedback_sensor_coefficient);
 				new_motor->set_voltage_compensation_saturation((*i).second.motor.voltage_compensation_saturation);
@@ -249,8 +259,7 @@ void motor_config_transmit_loop()
 				new_motor->set_reverse_limit_switch_normal((ck::MotorConfiguration::Motor::LimitSwitchNormal)((*i).second.motor.reverse_limit_switch_normal));
 				new_motor->set_peak_output_forward((*i).second.motor.peak_output_forward);
 				new_motor->set_peak_output_reverse((*i).second.motor.peak_output_reverse);
-				new_motor->set_can_network
-				   (ck::CANNetwork::RIO_CANIVORE);
+				new_motor->set_can_network(ck::CANNetwork::RIO_CANIVORE);
 			}
 
 			bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
@@ -571,16 +580,6 @@ void motor_transmit_loop()
 constexpr unsigned int str2int(const char *str, int h = 0)
 {
 	return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
-}
-
-double convertNativeUnitsToPosition(double nativeUnits, int motorID)
-{
-	return nativeUnits / motor_ticks_per_revolution[motorID-1] / gear_ratio_to_output_shaft[motorID-1];
-}
-
-double convertNativeUnitsToVelocity(double nativeUnits, int motorID)
-{
-	return (nativeUnits / motor_ticks_per_revolution[motorID-1] / gear_ratio_to_output_shaft[motorID-1] / motor_ticks_velocity_sample_window[motorID-1]) * 60.0;
 }
 
 
