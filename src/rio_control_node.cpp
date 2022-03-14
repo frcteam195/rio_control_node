@@ -229,9 +229,13 @@ void motor_config_transmit_loop()
 				new_motor->set_motion_cruise_velocity((*i).second.motor.motion_cruise_velocity);
 				new_motor->set_motion_acceleration((*i).second.motor.motion_acceleration);
 				new_motor->set_motion_s_curve_strength((*i).second.motor.motion_s_curve_strength);
-				new_motor->set_forward_soft_limit(convertNativeUnitsToPosition((*i).second.motor.forward_soft_limit, (*i).second.motor.id));
+				new_motor->set_forward_soft_limit((*i).second.motor.forward_soft_limit *
+                                                gear_ratio_to_output_shaft[(*i).second.motor.id-1] *
+                                                motor_ticks_per_revolution[(*i).second.motor.id-1]);
 				new_motor->set_forward_soft_limit_enable((*i).second.motor.forward_soft_limit_enable);
-				new_motor->set_reverse_soft_limit(convertNativeUnitsToPosition((*i).second.motor.reverse_soft_limit, (*i).second.motor.id));
+				new_motor->set_reverse_soft_limit((*i).second.motor.reverse_soft_limit *
+                                                gear_ratio_to_output_shaft[(*i).second.motor.id-1] *
+                                                motor_ticks_per_revolution[(*i).second.motor.id-1]);
 				new_motor->set_reverse_soft_limit_enable((*i).second.motor.reverse_soft_limit_enable);
 				new_motor->set_feedback_sensor_coefficient((*i).second.motor.feedback_sensor_coefficient);
 				new_motor->set_voltage_compensation_saturation((*i).second.motor.voltage_compensation_saturation);
