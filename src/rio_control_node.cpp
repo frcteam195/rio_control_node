@@ -877,7 +877,7 @@ void imu_config_thread()
 		imu_1->set_imu_type
 		   (ck::IMUConfig::IMUConfigData::IMUType::IMUConfig_IMUConfigData_IMUType_PIGEON2);
 		imu_1->set_mount_pose_axis_forward
-		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_NegativeY);
+		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveX);
 		imu_1->set_mount_pose_axis_up
 		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveZ);
 		imu_1->set_can_network
