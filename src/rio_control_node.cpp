@@ -251,12 +251,16 @@ void motor_config_transmit_loop()
 				supply_limit->set_trigger_threshold_current((*i).second.motor.supply_current_limit_config.trigger_threshold_current);
 				supply_limit->set_trigger_threshold_time((*i).second.motor.supply_current_limit_config.trigger_threshold_time);
 				new_motor->set_allocated_supply_current_limit_config(supply_limit);
+				if((*i).second.motor.id == 18)
+				{
+					ROS_INFO("Limit: %d %d %d %d ", (int)new_motor->supply_current_limit_config().enable(), (int)new_motor->supply_current_limit_config().current_limit(), (int)new_motor->supply_current_limit_config().trigger_threshold_current(), (int)new_motor->supply_current_limit_config().trigger_threshold_time());
+				}
 				ck::MotorConfiguration_Motor_CurrentLimitConfiguration *stator_limit = new ck::MotorConfiguration_Motor_CurrentLimitConfiguration();
 				stator_limit->set_enable((*i).second.motor.stator_current_limit_config.enable);
 				stator_limit->set_current_limit((*i).second.motor.stator_current_limit_config.current_limit);
 				stator_limit->set_trigger_threshold_current((*i).second.motor.stator_current_limit_config.trigger_threshold_current);
 				stator_limit->set_trigger_threshold_time((*i).second.motor.stator_current_limit_config.trigger_threshold_time);
-				new_motor->set_allocated_supply_current_limit_config(stator_limit);
+				new_motor->set_allocated_stator_current_limit_config(stator_limit);
 				new_motor->set_forward_limit_switch_source((ck::MotorConfiguration::Motor::LimitSwitchSource)((*i).second.motor.forward_limit_switch_source));
 				new_motor->set_forward_limit_switch_normal((ck::MotorConfiguration::Motor::LimitSwitchNormal)((*i).second.motor.forward_limit_switch_normal));
 				new_motor->set_reverse_limit_switch_source((ck::MotorConfiguration::Motor::LimitSwitchSource)((*i).second.motor.reverse_limit_switch_source));
@@ -275,6 +279,7 @@ void motor_config_transmit_loop()
 			else
 			{
 				zmq_msg_t message;
+				ROS_INFO("Limit Size is : %d", (int)motor_config.ByteSizeLong());
 				zmq_msg_init_size(&message, motor_config.ByteSizeLong());
 				memcpy(zmq_msg_data(&message), buffer, motor_config.ByteSizeLong());
 				zmq_msg_set_group(&message, "motorconfig");
