@@ -713,6 +713,7 @@ void process_robot_status(zmq_msg_t &message)
 		robot_status.robot_state = status.robot_state();
 		robot_status.match_time = status.match_time();
 		robot_status.game_data = status.game_data().c_str();
+		robot_status.selected_auto = status.selected_auto();
 		robot_status_pub.publish(robot_status);
 	}
 }
