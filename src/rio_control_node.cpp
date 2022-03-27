@@ -747,8 +747,8 @@ void process_robot_status(zmq_msg_t &message)
 		robot_status.selected_auto = status.selected_auto();
 		robot_status_pub.publish(robot_status);
 
-        ros::ServiceClient& nt_setdouble_localclient = getNTSetDoubleSrv();
-        if (nt_setdouble_localclient)
+        ros::ServiceClient& nt_setstring_localclient = getNTSetStringSrv();
+        if (nt_setstring_localclient)
         {
 
         }
