@@ -43,6 +43,8 @@
 #include <network_tables_node/NTSetDouble.h>
 #include <network_tables_node/NTSetString.h>
 
+#include <math.h>
+
 #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
 //#define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
 
@@ -746,11 +748,20 @@ void process_robot_status(zmq_msg_t &message)
 		robot_status.game_data = status.game_data().c_str();
 		robot_status.selected_auto = status.selected_auto();
 		robot_status_pub.publish(robot_status);
+		
+		int minutes = floor(robot_status.match_time/60.0);
+		int seconds = floor(fmod(robot_status.match_time,60.0));
+		std::stringstream output;
+		output << minutes << ":" << seconds;
 
         ros::ServiceClient& nt_setstring_localclient = getNTSetStringSrv();
         if (nt_setstring_localclient)
         {
-
+			network_tables_node::NTSetString ntmsg;
+			ntmsg.request.table_name = "dashboard_data";
+			ntmsg.request.entry_name = "match_time";
+			ntmsg.request.value = output.str();
+			nt_setstring_localclient.call(ntmsg);
         }
 
 	}
