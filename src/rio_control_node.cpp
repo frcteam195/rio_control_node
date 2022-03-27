@@ -39,6 +39,10 @@
 #include <rio_control_node/Solenoid_Control.h>
 #include <rio_control_node/Solenoid_Status.h>
 
+#include <network_tables_node/NTSetBool.h>
+#include <network_tables_node/NTSetDouble.h>
+#include <network_tables_node/NTSetString.h>
+
 #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
 //#define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
 
@@ -51,6 +55,10 @@ std::string ckgp(std::string instr)
 	retVal += "/" + instr;
 	return retVal;
 }
+
+ros::ServiceClient nt_setbool_client;
+ros::ServiceClient nt_setdouble_client;
+ros::ServiceClient nt_setstring_client;
 
 
 void *context;
@@ -78,6 +86,33 @@ static OverrideModeStruct overrideModeS = NORMAL_OPERATION_MODE;
 static std::vector<float> gear_ratio_to_output_shaft;
 static std::vector<float> motor_ticks_per_revolution;
 static std::vector<float> motor_ticks_velocity_sample_window;
+
+ros::ServiceClient& getNTSetBoolSrv()
+{
+	if (!nt_setbool_client)
+	{
+		nt_setbool_client = node->serviceClient<network_tables_node::NTSetBool>("nt_setbool", true);
+	}
+	return nt_setbool_client;
+}
+
+ros::ServiceClient& getNTSetDoubleSrv()
+{
+	if (!nt_setdouble_client)
+	{
+		nt_setdouble_client = node->serviceClient<network_tables_node::NTSetDouble>("nt_setdouble", true);
+	}
+	return nt_setdouble_client;
+}
+
+ros::ServiceClient& getNTSetStringSrv()
+{
+	if (!nt_setstring_client)
+	{
+		nt_setstring_client = node->serviceClient<network_tables_node::NTSetString>("nt_setstring", true);
+	}
+	return nt_setstring_client;
+}
 
 void load_config_params()
 {
@@ -711,6 +746,13 @@ void process_robot_status(zmq_msg_t &message)
 		robot_status.game_data = status.game_data().c_str();
 		robot_status.selected_auto = status.selected_auto();
 		robot_status_pub.publish(robot_status);
+
+        ros::ServiceClient& nt_setdouble_localclient = getNTSetDoubleSrv();
+        if (nt_setdouble_localclient)
+        {
+
+        }
+
 	}
 }
 
