@@ -52,6 +52,10 @@ add_message_files(
   Joystick_Status.msg
   Robot_Status.msg
   Current_Limit_Configuration.msg
+  Encoder_Config.msg
+  Encoder_Configuration.msg
+  Encoder_Data.msg
+  Encoder_Sensor_Data.msg
   Motor.msg
   Motor_Control.msg
   Motor_Config.msg

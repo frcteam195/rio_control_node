@@ -25,6 +25,8 @@
 #include "MotorConfiguration.pb.h"
 #include "IMUConfig.pb.h"
 #include "IMUData.pb.h"
+#include "EncoderConfig.pb.h"
+#include "EncoderData.pb.h"
 #include <signal.h>
 
 #include <nav_msgs/Odometry.h>
@@ -34,6 +36,10 @@
 #include <rio_control_node/Motor_Status.h>
 #include <rio_control_node/IMU_Data.h>
 #include <rio_control_node/IMU_Sensor_Data.h>
+#include <rio_control_node/Encoder_Data.h>
+#include <rio_control_node/Encoder_Sensor_Data.h>
+#include <rio_control_node/Encoder_Config.h>
+#include <rio_control_node/Encoder_Configuration.h>
 #include <rio_control_node/Motor_Configuration.h>
 #include <rio_control_node/Cal_Override_Mode.h>
 #include <rio_control_node/Solenoid_Control.h>
@@ -838,6 +844,34 @@ void process_imu_data(zmq_msg_t &message)
 	}
 }
 
+void process_encoder_data(zmq_msg_t &message)
+{
+	static ck::EncoderData zmqEncoderData;
+	static ros::Publisher encoder_data_pub = node->advertise<nav_msgs::Odometry>("/EncoderData", 1);
+
+	void *data = zmq_msg_data(&message);
+	bool parse_result = zmqEncoderData.ParseFromArray(data, zmq_msg_size(&message));
+
+	if (parse_result)
+	{
+		rio_control_node::Encoder_Data encoder_data;
+
+		for (int i = 0; i < zmqEncoderData.encoder_sensor_size(); i++)
+		{
+            const ck::EncoderData::EncoderSensorData &zmqEncoderSensorData = zmqEncoderData.encoder_sensor(i);
+			rio_control_node::Encoder_Sensor_Data encoder_sensor_data;
+
+			encoder_sensor_data.id = zmqEncoderSensorData.id();
+			encoder_sensor_data.position = zmqEncoderSensorData.sensor_position();
+			encoder_sensor_data.velocity = zmqEncoderSensorData.sensor_velocity();
+			encoder_sensor_data.faulted = zmqEncoderSensorData.is_faulted();
+
+			encoder_data.encoderData.push_back(encoder_sensor_data);
+		}
+		encoder_data_pub.publish(encoder_data);
+	}
+}
+
 void robot_receive_loop()
 {
 	void *subscriber = zmq_socket(context, ZMQ_DISH);
@@ -845,6 +879,7 @@ void robot_receive_loop()
 	int rc = zmq_bind(subscriber, "udp://*:5801");
 	rc = zmq_join(subscriber, "robotstatus");
 	rc = zmq_join(subscriber, "imudata");
+	rc = zmq_join(subscriber, "encoderdata");
 	rc = zmq_join(subscriber, "joystickstatus");
 	rc = zmq_join(subscriber, "motorstatus");
 
@@ -885,6 +920,11 @@ void robot_receive_loop()
 			process_imu_data(message);
 		}
 		break;
+		case str2int("encoderdata"):
+		{
+			process_encoder_data(message);
+		}
+		break;
 		case str2int("solenoidstatus"):
 		{
 			process_solenoid_status(message);
@@ -914,7 +954,7 @@ void imu_config_thread()
 
 	if (rc < 0)
 	{
-		ROS_INFO("Failed to initialize motor publisher");
+		ROS_INFO("Failed to initialize imu config publisher");
 	}
 
 	char buffer[10000];
@@ -959,6 +999,51 @@ void imu_config_thread()
 	}
 }
 
+void encoderConfigCallback(const rio_control_node::Encoder_Configuration &msg)
+{
+	void *publisher = zmq_socket(context, ZMQ_RADIO);
+
+	int rc = zmq_connect(publisher, ROBOT_CONNECT_STRING);
+
+	if (rc < 0)
+	{
+		ROS_INFO("Failed to initialize encoder config publisher");
+	}
+
+	char buffer[10000];
+
+	memset(buffer, 0, 10000);
+
+	ck::EncoderConfig encoder_config;
+	for (size_t i = 0; i < msg.encoders.size(); i++)
+	{
+		ck::EncoderConfig_EncoderConfigData * encoder_1 = encoder_config.add_encoder_config();
+		encoder_1->set_id(msg.encoders[i].id);
+		encoder_1->set_encoder_type
+			((ck::EncoderConfig::EncoderConfigData::EncoderType)msg.encoders[i].encoder_type);
+		encoder_1->set_sensor_source((ck::EncoderConfig::EncoderConfigData::EncoderSensorSource)msg.encoders[i].sensor_source);
+		encoder_1->set_can_network
+			((ck::CANNetwork)msg.encoders[i].can_network);
+	}
+
+	bool serialize_status = encoder_config.SerializeToArray(buffer, 10000);
+
+	if (!serialize_status)
+	{
+		ROS_INFO("Failed to serialize encoder config!!");
+	}
+	else
+	{
+		zmq_msg_t message;
+		zmq_msg_init_size(&message, encoder_config.ByteSizeLong());
+		memcpy(zmq_msg_data(&message), buffer, encoder_config.ByteSizeLong());
+		zmq_msg_set_group(&message, "encoderconfig");
+		// std::cout << "Sending message..." << std::endl;
+		zmq_msg_send(&message, publisher, 0);
+		zmq_msg_close(&message);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	/**
@@ -993,6 +1078,7 @@ int main(int argc, char **argv)
 
 	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
 	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
+	ros::Subscriber encoderConfig = node->subscribe("EncoderConfiguration", 100, encoderConfigCallback);
 	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback);
 
 	ros::Subscriber solenoidControl = node->subscribe("SolenoidControl", 100, solenoidControlCallback);
