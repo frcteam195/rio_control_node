@@ -95,6 +95,14 @@ static std::vector<float> gear_ratio_to_output_shaft;
 static std::vector<float> motor_ticks_per_revolution;
 static std::vector<float> motor_ticks_velocity_sample_window;
 
+static std::vector<int> encoder_ids;
+static std::vector<int> encoder_types;
+static std::vector<int> encoder_sources;
+static std::vector<int> encoder_networks;
+static std::vector<int> encoder_init_strategies;
+static std::vector<int> encoder_control_modes;
+static std::vector<float> encoder_magnetic_offsets;
+
 ros::ServiceClient& getNTSetBoolSrv()
 {
 	if (!nt_setbool_client)
@@ -160,7 +168,83 @@ void load_config_params()
             motor_ticks_velocity_sample_window.push_back(0.1);
         }
     }
-}
+
+	// Load the encoder information.
+	received_data = node->getParam(CKSP(encoder_ids), encoder_ids);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER IDS!");
+		for (size_t i = 0; i < 20; i++)
+		{
+			encoder_ids.push_back(21 + i);
+		}
+	}
+
+	received_data = node->getParam(CKSP(encoder_types), encoder_types);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER TYPES! DEFAULTING TO CANCODER!");
+		for (size_t i = 0; i < 20; i++)
+		{
+			encoder_types.push_back(0);
+		}
+	}
+
+	received_data = node->getParam(CKSP(encoder_sources), encoder_sources);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER SOURCES! DEFAULTING TO RELATIVE!");
+		for (size_t i = 0; i < 20; i++)
+		{
+			encoder_sources.push_back(0);
+		}
+	}
+
+	received_data = node->getParam(CKSP(encoder_networks), encoder_networks);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER NETWORKS! DEFAULTING TO CAN RIO CANIVORE!");
+		for (size_t i = 0; i < 20; i++)
+		{
+			encoder_networks.push_back(1);
+		}
+	}
+
+	received_data = node->getParam(CKSP(encoder_init_strategies), encoder_init_strategies);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER INIT STRATEGIES! DEFAULTING TO BOOT TO ZERO!");
+		for (size_t i = 0; i < 20; i++)
+		{
+			encoder_init_strategies.push_back(0);
+		}
+	}
+
+	received_data = node->getParam(CKSP(encoder_control_modes), encoder_control_modes);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER CONTROL MODES! DEFAULTING TO UNUSED!");
+		for (size_t i = 0; i < 20; i++)
+		{
+			encoder_control_modes.push_back(0);
+		}
+	}
+
+	received_data = node->getParam(CKSP(encoder_magnetic_offsets), encoder_magnetic_offsets);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER MAGNETIC OFFSETS! DEFAULTING TO 0!");
+		for (size_t i = 0; i < 20; i++)
+		{
+			encoder_magnetic_offsets.push_back(0.0);
+		}
+	}
+
+	// Save CAN encoder IDs in the motor config map.
+	for (std::map<int32_t, MotorConfigTracker>::iterator i = motor_config_map.begin(); i != motor_config_map.end(); i++)
+	{
+		(*i).second.set_feedback_sensor_can_id(encoder_ids[(*i).second.motor.id] - 1);
+	}
 
 void modeOverrideCallback(const rio_control_node::Cal_Override_Mode &msg)
 {
@@ -307,6 +391,7 @@ void motor_config_transmit_loop()
 				new_motor->set_peak_output_forward((*i).second.motor.peak_output_forward);
 				new_motor->set_peak_output_reverse((*i).second.motor.peak_output_reverse);
 				new_motor->set_can_network(ck::CANNetwork::RIO_CANIVORE);
+				new_motor->set_feedback_sensor_can_id((*i).second.motor.feedback_sensor_can_id);
 			}
 
 			bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
@@ -999,51 +1084,6 @@ void imu_config_thread()
 	}
 }
 
-void encoderConfigCallback(const rio_control_node::Encoder_Configuration &msg)
-{
-	void *publisher = zmq_socket(context, ZMQ_RADIO);
-
-	int rc = zmq_connect(publisher, ROBOT_CONNECT_STRING);
-
-	if (rc < 0)
-	{
-		ROS_INFO("Failed to initialize encoder config publisher");
-	}
-
-	char buffer[10000];
-
-	memset(buffer, 0, 10000);
-
-	ck::EncoderConfig encoder_config;
-	for (size_t i = 0; i < msg.encoders.size(); i++)
-	{
-		ck::EncoderConfig_EncoderConfigData * encoder_1 = encoder_config.add_encoder_config();
-		encoder_1->set_id(msg.encoders[i].id);
-		encoder_1->set_encoder_type
-			((ck::EncoderConfig::EncoderConfigData::EncoderType)msg.encoders[i].encoder_type);
-		encoder_1->set_sensor_source((ck::EncoderConfig::EncoderConfigData::EncoderSensorSource)msg.encoders[i].sensor_source);
-		encoder_1->set_can_network
-			((ck::CANNetwork)msg.encoders[i].can_network);
-	}
-
-	bool serialize_status = encoder_config.SerializeToArray(buffer, 10000);
-
-	if (!serialize_status)
-	{
-		ROS_INFO("Failed to serialize encoder config!!");
-	}
-	else
-	{
-		zmq_msg_t message;
-		zmq_msg_init_size(&message, encoder_config.ByteSizeLong());
-		memcpy(zmq_msg_data(&message), buffer, encoder_config.ByteSizeLong());
-		zmq_msg_set_group(&message, "encoderconfig");
-		// std::cout << "Sending message..." << std::endl;
-		zmq_msg_send(&message, publisher, 0);
-		zmq_msg_close(&message);
-	}
-}
-
 int main(int argc, char **argv)
 {
 	/**
@@ -1078,7 +1118,6 @@ int main(int argc, char **argv)
 
 	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
 	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
-	ros::Subscriber encoderConfig = node->subscribe("EncoderConfiguration", 100, encoderConfigCallback);
 	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback);
 
 	ros::Subscriber solenoidControl = node->subscribe("SolenoidControl", 100, solenoidControlCallback);
