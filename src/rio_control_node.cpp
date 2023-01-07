@@ -52,11 +52,10 @@
 #include <math.h>
 
 #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
-//#define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
-
+// #define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
 
 #define STR_PARAM(s) #s
-#define CKSP(s) ckgp( STR_PARAM(s) )
+#define CKSP(s) ckgp(STR_PARAM(s))
 std::string ckgp(std::string instr)
 {
 	std::string retVal = ros::this_node::getName();
@@ -67,7 +66,6 @@ std::string ckgp(std::string instr)
 ros::ServiceClient nt_setbool_client;
 ros::ServiceClient nt_setdouble_client;
 ros::ServiceClient nt_setstring_client;
-
 
 void *context;
 std::atomic<bool> sigintCalled;
@@ -89,8 +87,6 @@ static std::map<int32_t, MotorConfigTracker> motor_config_map;
 
 static OverrideModeStruct overrideModeS = NORMAL_OPERATION_MODE;
 
-
-
 static std::vector<float> gear_ratio_to_output_shaft;
 static std::vector<float> motor_ticks_per_revolution;
 static std::vector<float> motor_ticks_velocity_sample_window;
@@ -103,7 +99,7 @@ static std::vector<int> encoder_init_strategies;
 static std::vector<int> encoder_control_modes;
 static std::vector<float> encoder_magnetic_offsets;
 
-ros::ServiceClient& getNTSetBoolSrv()
+ros::ServiceClient &getNTSetBoolSrv()
 {
 	if (!nt_setbool_client)
 	{
@@ -112,7 +108,7 @@ ros::ServiceClient& getNTSetBoolSrv()
 	return nt_setbool_client;
 }
 
-ros::ServiceClient& getNTSetDoubleSrv()
+ros::ServiceClient &getNTSetDoubleSrv()
 {
 	if (!nt_setdouble_client)
 	{
@@ -121,7 +117,7 @@ ros::ServiceClient& getNTSetDoubleSrv()
 	return nt_setdouble_client;
 }
 
-ros::ServiceClient& getNTSetStringSrv()
+ros::ServiceClient &getNTSetStringSrv()
 {
 	if (!nt_setstring_client)
 	{
@@ -132,42 +128,42 @@ ros::ServiceClient& getNTSetStringSrv()
 
 void load_config_params()
 {
-    bool received_data = false;
-    received_data = node->getParam(CKSP(gear_ratio_to_output_shaft), gear_ratio_to_output_shaft);
-    if(!received_data)
-    {
-        ROS_ERROR("COULD NOT LOAD GEAR RATIOS, using 1.0");
-        for(uint32_t i = 0;
-            i < 20;
-            i++)
-        {
-            gear_ratio_to_output_shaft.push_back(1.0);
-        }
-    }
+	bool received_data = false;
+	received_data = node->getParam(CKSP(gear_ratio_to_output_shaft), gear_ratio_to_output_shaft);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD GEAR RATIOS, using 1.0");
+		for (uint32_t i = 0;
+			 i < 20;
+			 i++)
+		{
+			gear_ratio_to_output_shaft.push_back(1.0);
+		}
+	}
 
-    received_data = node->getParam(CKSP(motor_ticks_per_revolution), motor_ticks_per_revolution);
-    if(!received_data)
-    {
-        ROS_ERROR("COULD NOT LOAD ENCODER TICK COUNT, using 2048");
-        for(uint32_t i = 0;
-            i < 20;
-            i++)
-        {
-            motor_ticks_per_revolution.push_back(2048.0);
-        }
-    }
+	received_data = node->getParam(CKSP(motor_ticks_per_revolution), motor_ticks_per_revolution);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD ENCODER TICK COUNT, using 2048");
+		for (uint32_t i = 0;
+			 i < 20;
+			 i++)
+		{
+			motor_ticks_per_revolution.push_back(2048.0);
+		}
+	}
 
-    received_data = node->getParam(CKSP(motor_ticks_velocity_sample_window), motor_ticks_velocity_sample_window);
-    if(!received_data)
-    {
-        ROS_ERROR("COULD NOT LOAD ENCODER SAMPLE WINDOW, using 0.1");
-        for(uint32_t i = 0;
-            i < 20;
-            i++)
-        {
-            motor_ticks_velocity_sample_window.push_back(0.1);
-        }
-    }
+	received_data = node->getParam(CKSP(motor_ticks_velocity_sample_window), motor_ticks_velocity_sample_window);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD ENCODER SAMPLE WINDOW, using 0.1");
+		for (uint32_t i = 0;
+			 i < 20;
+			 i++)
+		{
+			motor_ticks_velocity_sample_window.push_back(0.1);
+		}
+	}
 
 	// Load the encoder information.
 	received_data = node->getParam(CKSP(encoder_ids), encoder_ids);
@@ -243,8 +239,9 @@ void load_config_params()
 	// Save CAN encoder IDs in the motor config map.
 	for (std::map<int32_t, MotorConfigTracker>::iterator i = motor_config_map.begin(); i != motor_config_map.end(); i++)
 	{
-		(*i).second.set_feedback_sensor_can_id(encoder_ids[(*i).second.motor.id] - 1);
+		(*i).second.motor.feedback_sensor_can_id = encoder_ids[(*i).second.motor.id] - 1;
 	}
+}
 
 void modeOverrideCallback(const rio_control_node::Cal_Override_Mode &msg)
 {
@@ -269,17 +266,16 @@ void process_override_heartbeat_thread()
 		}
 		rate.sleep();
 	}
-
 }
 
 double convertNativeUnitsToPosition(double nativeUnits, int motorID)
 {
-	return nativeUnits / motor_ticks_per_revolution[motorID-1] / gear_ratio_to_output_shaft[motorID-1];
+	return nativeUnits / motor_ticks_per_revolution[motorID - 1] / gear_ratio_to_output_shaft[motorID - 1];
 }
 
 double convertNativeUnitsToVelocity(double nativeUnits, int motorID)
 {
-	return (nativeUnits / motor_ticks_per_revolution[motorID-1] / gear_ratio_to_output_shaft[motorID-1] / motor_ticks_velocity_sample_window[motorID-1]) * 60.0;
+	return (nativeUnits / motor_ticks_per_revolution[motorID - 1] / gear_ratio_to_output_shaft[motorID - 1] / motor_ticks_velocity_sample_window[motorID - 1]) * 60.0;
 }
 
 void processMotorConfigMsg(const rio_control_node::Motor_Configuration &msg)
@@ -357,12 +353,12 @@ void motor_config_transmit_loop()
 				new_motor->set_motion_acceleration((*i).second.motor.motion_acceleration);
 				new_motor->set_motion_s_curve_strength((*i).second.motor.motion_s_curve_strength);
 				new_motor->set_forward_soft_limit((*i).second.motor.forward_soft_limit *
-                                                gear_ratio_to_output_shaft[(*i).second.motor.id-1] *
-                                                motor_ticks_per_revolution[(*i).second.motor.id-1]);
+												  gear_ratio_to_output_shaft[(*i).second.motor.id - 1] *
+												  motor_ticks_per_revolution[(*i).second.motor.id - 1]);
 				new_motor->set_forward_soft_limit_enable((*i).second.motor.forward_soft_limit_enable);
 				new_motor->set_reverse_soft_limit((*i).second.motor.reverse_soft_limit *
-                                                gear_ratio_to_output_shaft[(*i).second.motor.id-1] *
-                                                motor_ticks_per_revolution[(*i).second.motor.id-1]);
+												  gear_ratio_to_output_shaft[(*i).second.motor.id - 1] *
+												  motor_ticks_per_revolution[(*i).second.motor.id - 1]);
 				new_motor->set_reverse_soft_limit_enable((*i).second.motor.reverse_soft_limit_enable);
 				new_motor->set_feedback_sensor_coefficient((*i).second.motor.feedback_sensor_coefficient);
 				new_motor->set_voltage_compensation_saturation((*i).second.motor.voltage_compensation_saturation);
@@ -411,18 +407,18 @@ void motor_config_transmit_loop()
 				zmq_msg_close(&message);
 			}
 		}
-        {
+		{
 			std::lock_guard<std::mutex> lock(motor_config_mutex);
-            rio_control_node::Motor_Configuration overall_motor_config;
+			rio_control_node::Motor_Configuration overall_motor_config;
 			for (std::map<int32_t, MotorConfigTracker>::iterator i = motor_config_map.begin();
 				 i != motor_config_map.end();
 				 i++)
 			{
-                overall_motor_config.motors.push_back((*i).second.motor);
-            }
-            static ros::Publisher overall_config_publisher = node->advertise<rio_control_node::Motor_Configuration>("/MotorConfigurationFinal", 10);
-            overall_config_publisher.publish(overall_motor_config);
-        }
+				overall_motor_config.motors.push_back((*i).second.motor);
+			}
+			static ros::Publisher overall_config_publisher = node->advertise<rio_control_node::Motor_Configuration>("/MotorConfigurationFinal", 10);
+			overall_config_publisher.publish(overall_motor_config);
+		}
 
 		rate.sleep();
 	}
@@ -530,7 +526,6 @@ void solenoid_transmit_loop()
 	}
 }
 
-
 void process_solenoid_status(zmq_msg_t &message)
 {
 	static ros::Publisher solenoid_status_pub = node->advertise<rio_control_node::Solenoid_Status>("SolenoidStatus", 1);
@@ -556,7 +551,6 @@ void process_solenoid_status(zmq_msg_t &message)
 		solenoid_status_pub.publish(solenoid_status);
 	}
 }
-
 
 std::mutex motor_control_mutex;
 
@@ -643,25 +637,25 @@ void motor_transmit_loop()
 				new_motor->set_controller_type((ck::MotorControl_Motor_ControllerType)(*i).second.motor.controller_type);
 				new_motor->set_id((*i).second.motor.id);
 
-                if ((*i).second.motor.control_mode == rio_control_node::Motor::MOTION_MAGIC ||
-                    (*i).second.motor.control_mode == rio_control_node::Motor::POSITION)
-                {
-				    new_motor->set_output_value((*i).second.motor.output_value *
-                                                gear_ratio_to_output_shaft[(*i).second.motor.id-1] *
-                                                motor_ticks_per_revolution[(*i).second.motor.id-1]);
-                }
-                else if((*i).second.motor.control_mode == rio_control_node::Motor::VELOCITY)
-                {
-				    new_motor->set_output_value((*i).second.motor.output_value *
-                                                gear_ratio_to_output_shaft[(*i).second.motor.id-1] *
-                                                motor_ticks_per_revolution[(*i).second.motor.id-1] /
-                                                60.0 *
-                                                motor_ticks_velocity_sample_window[(*i).second.motor.id]);
-                }
-                else
-                {
-				    new_motor->set_output_value((*i).second.motor.output_value);
-                }
+				if ((*i).second.motor.control_mode == rio_control_node::Motor::MOTION_MAGIC ||
+					(*i).second.motor.control_mode == rio_control_node::Motor::POSITION)
+				{
+					new_motor->set_output_value((*i).second.motor.output_value *
+												gear_ratio_to_output_shaft[(*i).second.motor.id - 1] *
+												motor_ticks_per_revolution[(*i).second.motor.id - 1]);
+				}
+				else if ((*i).second.motor.control_mode == rio_control_node::Motor::VELOCITY)
+				{
+					new_motor->set_output_value((*i).second.motor.output_value *
+												gear_ratio_to_output_shaft[(*i).second.motor.id - 1] *
+												motor_ticks_per_revolution[(*i).second.motor.id - 1] /
+												60.0 *
+												motor_ticks_velocity_sample_window[(*i).second.motor.id]);
+				}
+				else
+				{
+					new_motor->set_output_value((*i).second.motor.output_value);
+				}
 
 				if ((*i).second.active_time < ros::Time::now())
 				{
@@ -693,18 +687,18 @@ void motor_transmit_loop()
 				zmq_msg_close(&message);
 			}
 		}
-        {
+		{
 			std::lock_guard<std::mutex> lock(motor_control_mutex);
-            rio_control_node::Motor_Control overall_motor_control;
+			rio_control_node::Motor_Control overall_motor_control;
 			for (std::map<int32_t, MotorTracker>::iterator i = motor_control_map.begin();
 				 i != motor_control_map.end();
 				 i++)
 			{
-                overall_motor_control.motors.push_back((*i).second.motor);
-            }
-            static ros::Publisher overall_control_publisher = node->advertise<rio_control_node::Motor_Control>("/MotorControlFinal", 10);
-            overall_control_publisher.publish(overall_motor_control);
-        }
+				overall_motor_control.motors.push_back((*i).second.motor);
+			}
+			static ros::Publisher overall_control_publisher = node->advertise<rio_control_node::Motor_Control>("/MotorControlFinal", 10);
+			overall_control_publisher.publish(overall_motor_control);
+		}
 
 		rate.sleep();
 	}
@@ -714,7 +708,6 @@ constexpr unsigned int str2int(const char *str, int h = 0)
 {
 	return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
 }
-
 
 void process_motor_status(zmq_msg_t &message)
 {
@@ -758,12 +751,12 @@ void process_motor_status(zmq_msg_t &message)
 			{
 				motor_info.commanded_output = convertNativeUnitsToPosition(motor.commanded_output(), motor.id());
 			}
-				break;
+			break;
 			case rio_control_node::Motor_Info::VELOCITY:
 			{
 				motor_info.commanded_output = convertNativeUnitsToVelocity(motor.commanded_output(), motor.id());
 			}
-				break;
+			break;
 			case rio_control_node::Motor_Info::CURRENT:
 			case rio_control_node::Motor_Info::FOLLOWER:
 			case rio_control_node::Motor_Info::PERCENT_OUTPUT:
@@ -772,7 +765,7 @@ void process_motor_status(zmq_msg_t &message)
 			{
 				motor_info.commanded_output = motor.commanded_output();
 			}
-				break;
+			break;
 			}
 
 			motor_status.motors.push_back(motor_info);
@@ -839,22 +832,21 @@ void process_robot_status(zmq_msg_t &message)
 		robot_status.game_data = status.game_data().c_str();
 		robot_status.selected_auto = status.selected_auto();
 		robot_status_pub.publish(robot_status);
-		
-		int minutes = floor(robot_status.match_time/60.0);
-		int seconds = floor(fmod(robot_status.match_time,60.0));
+
+		int minutes = floor(robot_status.match_time / 60.0);
+		int seconds = floor(fmod(robot_status.match_time, 60.0));
 		std::stringstream output;
 		output << minutes << ":" << seconds;
 
-        ros::ServiceClient& nt_setstring_localclient = getNTSetStringSrv();
-        if (nt_setstring_localclient)
-        {
+		ros::ServiceClient &nt_setstring_localclient = getNTSetStringSrv();
+		if (nt_setstring_localclient)
+		{
 			network_tables_node::NTSetString ntmsg;
 			ntmsg.request.table_name = "dashboard_data";
 			ntmsg.request.entry_name = "match_time";
 			ntmsg.request.value = output.str();
 			nt_setstring_localclient.call(ntmsg);
-        }
-
+		}
 	}
 }
 
@@ -868,59 +860,123 @@ void process_imu_data(zmq_msg_t &message)
 
 	if (parse_result)
 	{
-        nav_msgs::Odometry odometry_data;
-        odometry_data.header.stamp = ros::Time::now();
-        odometry_data.header.frame_id = "odom";
-        odometry_data.child_frame_id = "base_link";
+		nav_msgs::Odometry odometry_data;
+		odometry_data.header.stamp = ros::Time::now();
+		odometry_data.header.frame_id = "odom";
+		odometry_data.child_frame_id = "base_link";
 
-        odometry_data.pose.pose.orientation.w = 0;
-        odometry_data.pose.pose.orientation.x = 0;
-        odometry_data.pose.pose.orientation.y = 0;
-        odometry_data.pose.pose.orientation.z = 0;
-        odometry_data.pose.pose.position.x = 0;
-        odometry_data.pose.pose.position.y = 0;
-        odometry_data.pose.pose.position.z = 0;
+		odometry_data.pose.pose.orientation.w = 0;
+		odometry_data.pose.pose.orientation.x = 0;
+		odometry_data.pose.pose.orientation.y = 0;
+		odometry_data.pose.pose.orientation.z = 0;
+		odometry_data.pose.pose.position.x = 0;
+		odometry_data.pose.pose.position.y = 0;
+		odometry_data.pose.pose.position.z = 0;
 
-        odometry_data.twist.twist.linear.x = 0;
-        odometry_data.twist.twist.linear.y = 0;
-        odometry_data.twist.twist.linear.z = 0;
+		odometry_data.twist.twist.linear.x = 0;
+		odometry_data.twist.twist.linear.y = 0;
+		odometry_data.twist.twist.linear.z = 0;
 
-        odometry_data.twist.twist.angular.x = 0;
-        odometry_data.twist.twist.angular.y = 0;
-        odometry_data.twist.twist.angular.z = 0;
+		odometry_data.twist.twist.angular.x = 0;
+		odometry_data.twist.twist.angular.y = 0;
+		odometry_data.twist.twist.angular.z = 0;
 
-        odometry_data.pose.covariance =
-        { 0.001, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.001, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.001, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.001, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.001, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.00001,};
+		odometry_data.pose.covariance =
+			{
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.00001,
+			};
 
-        odometry_data.twist.covariance =
-        { 0.001, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.001, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.001, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.001, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.001, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.001,};
+		odometry_data.twist.covariance =
+			{
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.001,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.0,
+				0.001,
+			};
 
 		for (int i = 0; i < imuData.imu_sensor_size(); i++)
 		{
-            const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
+			const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
 
-            tf2::Quaternion imu_quaternion;
+			tf2::Quaternion imu_quaternion;
 			imu_quaternion.setRPY(imuSensorData.z(), imuSensorData.y(), imuSensorData.x());
 
-            odometry_data.pose.pose.orientation.w = imu_quaternion.getW();
-            odometry_data.pose.pose.orientation.x = imu_quaternion.getX();
-            odometry_data.pose.pose.orientation.y = imu_quaternion.getY();
-            odometry_data.pose.pose.orientation.z = imu_quaternion.getZ();
+			odometry_data.pose.pose.orientation.w = imu_quaternion.getW();
+			odometry_data.pose.pose.orientation.x = imu_quaternion.getX();
+			odometry_data.pose.pose.orientation.y = imu_quaternion.getY();
+			odometry_data.pose.pose.orientation.z = imu_quaternion.getZ();
 
 			tf2::Matrix3x3 imu3x3(imu_quaternion);
 			tf2Scalar yaw, pitch, roll;
 			imu3x3.getRPY(roll, pitch, yaw);
-			
+
 			odometry_data.pose.pose.position.x = roll;
 			odometry_data.pose.pose.position.y = pitch;
 			odometry_data.pose.pose.position.z = yaw;
@@ -943,11 +999,12 @@ void process_encoder_data(zmq_msg_t &message)
 
 		for (int i = 0; i < zmqEncoderData.encoder_sensor_size(); i++)
 		{
-            const ck::EncoderData::EncoderSensorData &zmqEncoderSensorData = zmqEncoderData.encoder_sensor(i);
+			const ck::EncoderData::EncoderSensorData &zmqEncoderSensorData = zmqEncoderData.encoder_sensor(i);
 			rio_control_node::Encoder_Sensor_Data encoder_sensor_data;
 
 			encoder_sensor_data.id = zmqEncoderSensorData.id();
-			encoder_sensor_data.position = zmqEncoderSensorData.sensor_position();
+			encoder_sensor_data.absolute_position = zmqEncoderSensorData.sensor_absolute_position();
+			encoder_sensor_data.relative_position = zmqEncoderSensorData.sensor_relative_position();
 			encoder_sensor_data.velocity = zmqEncoderSensorData.sensor_velocity();
 			encoder_sensor_data.faulted = zmqEncoderSensorData.is_faulted();
 
@@ -1048,20 +1105,16 @@ void imu_config_thread()
 
 	ros::Rate rate(10);
 
-	while(ros::ok())
+	while (ros::ok())
 	{
 		ck::IMUConfig imu_config;
 
-		ck::IMUConfig_IMUConfigData * imu_1 = imu_config.add_imu_config();
+		ck::IMUConfig_IMUConfigData *imu_1 = imu_config.add_imu_config();
 		imu_1->set_id(0);
-		imu_1->set_imu_type
-		   (ck::IMUConfig::IMUConfigData::IMUType::IMUConfig_IMUConfigData_IMUType_PIGEON2);
-		imu_1->set_mount_pose_axis_forward
-		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveX);
-		imu_1->set_mount_pose_axis_up
-		   (ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveZ);
-		imu_1->set_can_network
-		   (ck::CANNetwork::RIO_CANIVORE);
+		imu_1->set_imu_type(ck::IMUConfig::IMUConfigData::IMUType::IMUConfig_IMUConfigData_IMUType_PIGEON2);
+		imu_1->set_mount_pose_axis_forward(ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveX);
+		imu_1->set_mount_pose_axis_up(ck::IMUConfig::IMUConfigData::AxisDirection::IMUConfig_IMUConfigData_AxisDirection_PositiveZ);
+		imu_1->set_can_network(ck::CANNetwork::RIO_CANIVORE);
 
 		bool serialize_status = imu_config.SerializeToArray(buffer, 10000);
 
@@ -1079,7 +1132,55 @@ void imu_config_thread()
 			zmq_msg_send(&message, publisher, 0);
 			zmq_msg_close(&message);
 		}
-		
+
+		rate.sleep();
+	}
+}
+
+void encoder_transmit_loop(void)
+{
+	void *publisher = zmq_socket(context, ZMQ_RADIO);
+
+	if (zmq_connect(publisher, ROBOT_CONNECT_STRING))
+	{
+		ROS_INFO("Failed to initialize encoder config publisher");
+	}
+
+	char buffer[10000];
+	memset(buffer, '\0', 10000);
+
+	ros::Rate rate(10);
+
+	while (ros::ok())
+	{
+
+		ck::EncoderConfig encoder_config;
+		for (size_t i = 0; i < 20; i++)
+		{
+			ck::EncoderConfig_EncoderConfigData *config = encoder_config.add_encoder_config();
+
+			config->set_id(encoder_ids[i]);
+			config->set_encoder_type((ck::EncoderConfig::EncoderConfigData::EncoderType)encoder_types[i]);
+			config->set_sensor_source((ck::EncoderConfig::EncoderConfigData::EncoderSensorSource)encoder_sources[i]);
+			config->set_can_network((ck::CANNetwork)encoder_networks[i]);
+			config->set_magnetic_offset(encoder_magnetic_offsets[i]);
+			config->set_initialization_strategy((ck::EncoderConfig::EncoderConfigData::InitializationStrategy)encoder_init_strategies[i]);
+		}
+
+		if (!encoder_config.SerializeToArray(buffer, 10000))
+		{
+			ROS_INFO("Failed to serialize encoder config!");
+		}
+		else
+		{
+			zmq_msg_t message;
+			zmq_msg_init_size(&message, encoder_config.ByteSizeLong());
+			memcpy(zmq_msg_data(&message), buffer, encoder_config.ByteSizeLong());
+			zmq_msg_set_group(&message, "encoderconfig");
+			zmq_msg_send(&message, publisher, 0);
+			zmq_msg_close(&message);
+		}
+
 		rate.sleep();
 	}
 }
@@ -1087,15 +1188,15 @@ void imu_config_thread()
 int main(int argc, char **argv)
 {
 	/**
-   * The ros::init() function needs to see argc and argv so that it can perform
-   * any ROS arguments and name remapping that were provided at the command line.
-   * For programmatic remappings you can use a different version of init() which takes
-   * remappings directly, but for most command-line programs, passing argc and argv is
-   * the easiest way to do it.  The third argument to init() is the name of the node.
-   *
-   * You must call one of the versions of ros::init() before using any other
-   * part of the ROS system.
-   */
+	 * The ros::init() function needs to see argc and argv so that it can perform
+	 * any ROS arguments and name remapping that were provided at the command line.
+	 * For programmatic remappings you can use a different version of init() which takes
+	 * remappings directly, but for most command-line programs, passing argc and argv is
+	 * the easiest way to do it.  The third argument to init() is the name of the node.
+	 *
+	 * You must call one of the versions of ros::init() before using any other
+	 * part of the ROS system.
+	 */
 	ros::init(argc, argv, "rio_control_node", ros::init_options::NoSigintHandler);
 	// GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -1107,7 +1208,7 @@ int main(int argc, char **argv)
 
 	node = &n;
 
-    load_config_params();
+	load_config_params();
 
 	std::thread rioReceiveThread(robot_receive_loop);
 	std::thread motorSendThread(motor_transmit_loop);
@@ -1115,6 +1216,7 @@ int main(int argc, char **argv)
 	std::thread motorConfigSendThread(motor_config_transmit_loop);
 	std::thread processOverrideHeartbeat(process_override_heartbeat_thread);
 	std::thread imuConfigThread(imu_config_thread);
+	std::thread encoderConfigSendThread(encoder_transmit_loop);
 
 	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
 	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
@@ -1133,9 +1235,11 @@ int main(int argc, char **argv)
 	motorConfigSendThread.join();
 	processOverrideHeartbeat.join();
 	imuConfigThread.join();
+	encoderConfigSendThread.join();
+
 	if (sigintCalled)
 	{
-		//Send sigterm due to blocking zmq call when exiting roslaunch
+		// Send sigterm due to blocking zmq call when exiting roslaunch
 		kill(getpid(), SIGTERM);
 	}
 

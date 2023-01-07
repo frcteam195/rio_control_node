@@ -59,3 +59,4 @@ int8 reverse_limit_switch_source
 int8 reverse_limit_switch_normal
 float64 peak_output_forward
 float64 peak_output_reverse
+int8 feedback_sensor_can_id
