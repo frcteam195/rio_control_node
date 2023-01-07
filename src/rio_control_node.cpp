@@ -172,7 +172,7 @@ void load_config_params()
 		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER IDS!");
 		for (size_t i = 0; i < 20; i++)
 		{
-			encoder_ids.push_back(21 + i);
+			encoder_ids.push_back(0);
 		}
 	}
 
@@ -1153,18 +1153,20 @@ void encoder_transmit_loop(void)
 
 	while (ros::ok())
 	{
-
 		ck::EncoderConfig encoder_config;
 		for (size_t i = 0; i < 20; i++)
 		{
-			ck::EncoderConfig_EncoderConfigData *config = encoder_config.add_encoder_config();
+			if (encoder_ids[i] != 0)
+			{
+				ck::EncoderConfig_EncoderConfigData *config = encoder_config.add_encoder_config();
 
-			config->set_id(encoder_ids[i]);
-			config->set_encoder_type((ck::EncoderConfig::EncoderConfigData::EncoderType)encoder_types[i]);
-			config->set_sensor_source((ck::EncoderConfig::EncoderConfigData::EncoderSensorSource)encoder_sources[i]);
-			config->set_can_network((ck::CANNetwork)encoder_networks[i]);
-			config->set_magnetic_offset(encoder_magnetic_offsets[i]);
-			config->set_initialization_strategy((ck::EncoderConfig::EncoderConfigData::InitializationStrategy)encoder_init_strategies[i]);
+				config->set_id(encoder_ids[i]);
+				config->set_encoder_type((ck::EncoderConfig::EncoderConfigData::EncoderType)encoder_types[i]);
+				config->set_sensor_source((ck::EncoderConfig::EncoderConfigData::EncoderSensorSource)encoder_sources[i]);
+				config->set_can_network((ck::CANNetwork)encoder_networks[i]);
+				config->set_magnetic_offset(encoder_magnetic_offsets[i]);
+				config->set_initialization_strategy((ck::EncoderConfig::EncoderConfigData::InitializationStrategy)encoder_init_strategies[i]);
+			}
 		}
 
 		if (!encoder_config.SerializeToArray(buffer, 10000))
