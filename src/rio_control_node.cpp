@@ -1143,7 +1143,7 @@ void encoder_transmit_loop(void)
 
 	if (zmq_connect(publisher, ROBOT_CONNECT_STRING))
 	{
-		ROS_INFO("Failed to initialize encoder config publisher");
+		ROS_ERROR("Failed to initialize encoder config publisher!");
 	}
 
 	char buffer[10000];
