@@ -235,12 +235,6 @@ void load_config_params()
 			encoder_magnetic_offsets.push_back(0.0);
 		}
 	}
-
-	// Save CAN encoder IDs in the motor config map.
-	for (std::map<int32_t, MotorConfigTracker>::iterator i = motor_config_map.begin(); i != motor_config_map.end(); i++)
-	{
-		(*i).second.motor.feedback_sensor_can_id = encoder_ids[(*i).second.motor.id] - 1;
-	}
 }
 
 void modeOverrideCallback(const rio_control_node::Cal_Override_Mode &msg)
@@ -387,7 +381,7 @@ void motor_config_transmit_loop()
 				new_motor->set_peak_output_forward((*i).second.motor.peak_output_forward);
 				new_motor->set_peak_output_reverse((*i).second.motor.peak_output_reverse);
 				new_motor->set_can_network(ck::CANNetwork::RIO_CANIVORE);
-				new_motor->set_feedback_sensor_can_id((*i).second.motor.feedback_sensor_can_id);
+				new_motor->set_feedback_sensor_can_id(encoder_ids[(*i).second.motor.id - 1]);
 			}
 
 			bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
@@ -1021,7 +1015,7 @@ void robot_receive_loop()
 	int rc = zmq_bind(subscriber, "udp://*:5801");
 	rc = zmq_join(subscriber, "robotstatus");
 	rc = zmq_join(subscriber, "imudata");
-	rc = zmq_join(subscriber, "encoderdata");
+	// rc = zmq_join(subscriber, "encoderdata");
 	rc = zmq_join(subscriber, "joystickstatus");
 	rc = zmq_join(subscriber, "motorstatus");
 
@@ -1218,7 +1212,7 @@ int main(int argc, char **argv)
 	std::thread motorConfigSendThread(motor_config_transmit_loop);
 	std::thread processOverrideHeartbeat(process_override_heartbeat_thread);
 	std::thread imuConfigThread(imu_config_thread);
-	std::thread encoderConfigSendThread(encoder_transmit_loop);
+	// std::thread encoderConfigSendThread(encoder_transmit_loop);
 
 	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
 	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
@@ -1237,7 +1231,7 @@ int main(int argc, char **argv)
 	motorConfigSendThread.join();
 	processOverrideHeartbeat.join();
 	imuConfigThread.join();
-	encoderConfigSendThread.join();
+	// encoderConfigSendThread.join();
 
 	if (sigintCalled)
 	{
