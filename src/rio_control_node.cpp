@@ -3,6 +3,7 @@
 
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Float32.h"
 
 #define ZMQ_BUILD_DRAFT_API
 
@@ -13,6 +14,7 @@
 #include <mutex>
 #include <iostream>
 #include <atomic>
+#include <list>
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2/LinearMath/Matrix3x3.h"
 
@@ -844,6 +846,38 @@ void process_robot_status(zmq_msg_t &message)
 	}
 }
 
+// wrap x -> [0,max)
+template <typename T>
+inline T wrapMax(T x, T max)
+{
+	/* integer math: (max + x % max) % max */
+	return std::fmod(max + std::fmod(x, max), max);
+}
+
+// wrap x -> [min,max)
+template <typename T>
+inline T wrapMinMax(T x, T min, T max)
+{
+	return min + wrapMax(x - min, max - min);
+}
+
+template <typename T>
+inline T normalize_to_2_pi(T value)
+{
+	return wrapMinMax<T>(value, 0, (2.0 * M_PI));
+}
+
+double smallest_traversal(double angle, double target_angle)
+{
+    double left = -normalize_to_2_pi(angle - target_angle);
+    double right = normalize_to_2_pi(target_angle - angle);
+    if(fabs(left) < fabs(right))
+    {
+        return left;
+    }
+    return right;
+}
+
 void process_imu_data(zmq_msg_t &message)
 {
 	static ck::IMUData imuData;
@@ -974,8 +1008,73 @@ void process_imu_data(zmq_msg_t &message)
 			odometry_data.pose.pose.position.x = roll;
 			odometry_data.pose.pose.position.y = pitch;
 			odometry_data.pose.pose.position.z = yaw;
+
+			static std::list<float> positions;
+			static std::list<ros::Time> times;
+			static std::list<float> speeds;
+			static bool first_pass = true;
+
+			if(first_pass)
+			{
+				for(int i = 0; i < 5; i++)
+				{
+					positions.push_back(yaw);
+					times.push_back(ros::Time().now());
+				}
+				for(int i = 0; i < 3; i++)
+				{
+					speeds.push_back(0);
+				}
+				first_pass = false;
+			}
+
+			float first_position = positions.front();
+			ros::Time first_time = times.front();
+
+			positions.pop_front();
+			times.pop_front();
+
+			float current_position = yaw;
+			ros::Time current_time = ros::Time().now();
+
+			positions.push_back(current_position);
+			times.push_back(current_time);
+
+			float delta_yaw = smallest_traversal(first_position, current_position) * 180.0 / M_PI;
+			float delta_time = current_time.toSec() - first_time.toSec();
+
+			float speed = delta_yaw / delta_time;
+
+			speeds.pop_front();
+			speeds.push_back(speed);
+
+			float sum = 0;
+
+			for(auto &i : speeds)
+			{
+				sum += i;
+			}
+
+			float average = sum / speeds.size();
+
+			std_msgs::Float32 heading_rate;
+			heading_rate.data = average;
+			std_msgs::Float32 heading;
+			heading.data = current_position * 180.0 / M_PI;
+			std_msgs::Float32 last_yaw;
+			last_yaw.data = first_position * 180.0 / M_PI;
+
+
+
+			static ros::Publisher imu_last_yaw = node->advertise<std_msgs::Float32>("/lastyaw", 100);
+			static ros::Publisher imu_heading_pub = node->advertise<std_msgs::Float32>("/rawyaw", 100);
+			static ros::Publisher imu_speed_pub = node->advertise<std_msgs::Float32>("/rawyawspeed", 100);
+
+			imu_last_yaw.publish(last_yaw);
+			imu_speed_pub.publish(heading_rate);
+			imu_heading_pub.publish(heading);
+
 		}
-		imu_data_pub.publish(odometry_data);
 	}
 }
 
