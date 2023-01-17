@@ -25,7 +25,7 @@ int32 id
 int8 can_network
 int8 led_strip_type
 int8 vbat_config
-int8 vbat_duty_cycle
+float64 vbat_duty_cycle
 int8 led_control_mode
 LED_Color color
 LED_Animation[] animation

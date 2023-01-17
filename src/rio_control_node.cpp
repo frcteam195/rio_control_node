@@ -27,6 +27,7 @@
 #include "IMUData.pb.h"
 #include "EncoderConfig.pb.h"
 #include "EncoderData.pb.h"
+#include "LEDControl.pb.h"
 #include <signal.h>
 
 #include <nav_msgs/Odometry.h>
@@ -44,6 +45,10 @@
 #include <rio_control_node/Cal_Override_Mode.h>
 #include <rio_control_node/Solenoid_Control.h>
 #include <rio_control_node/Solenoid_Status.h>
+#include <rio_control_node/LED_Animation.h>
+#include <rio_control_node/LED_Color.h>
+#include <rio_control_node/LED_Control.h>
+#include <rio_control_node/LED_Control_Data.h>
 
 #include <network_tables_node/NTSetBool.h>
 #include <network_tables_node/NTSetDouble.h>
@@ -90,14 +95,6 @@ static OverrideModeStruct overrideModeS = NORMAL_OPERATION_MODE;
 static std::vector<float> gear_ratio_to_output_shaft;
 static std::vector<float> motor_ticks_per_revolution;
 static std::vector<float> motor_ticks_velocity_sample_window;
-
-static std::vector<int> encoder_ids;
-static std::vector<int> encoder_types;
-static std::vector<int> encoder_sources;
-static std::vector<int> encoder_networks;
-static std::vector<int> encoder_init_strategies;
-static std::vector<int> encoder_control_modes;
-static std::vector<float> encoder_magnetic_offsets;
 
 ros::ServiceClient &getNTSetBoolSrv()
 {
@@ -162,77 +159,6 @@ void load_config_params()
 			 i++)
 		{
 			motor_ticks_velocity_sample_window.push_back(0.1);
-		}
-	}
-
-	// Load the encoder information.
-	received_data = node->getParam(CKSP(encoder_ids), encoder_ids);
-	if (!received_data)
-	{
-		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER IDS!");
-		for (size_t i = 0; i < 20; i++)
-		{
-			encoder_ids.push_back(0);
-		}
-	}
-
-	received_data = node->getParam(CKSP(encoder_types), encoder_types);
-	if (!received_data)
-	{
-		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER TYPES! DEFAULTING TO CANCODER!");
-		for (size_t i = 0; i < 20; i++)
-		{
-			encoder_types.push_back(0);
-		}
-	}
-
-	received_data = node->getParam(CKSP(encoder_sources), encoder_sources);
-	if (!received_data)
-	{
-		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER SOURCES! DEFAULTING TO RELATIVE!");
-		for (size_t i = 0; i < 20; i++)
-		{
-			encoder_sources.push_back(0);
-		}
-	}
-
-	received_data = node->getParam(CKSP(encoder_networks), encoder_networks);
-	if (!received_data)
-	{
-		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER NETWORKS! DEFAULTING TO CAN RIO CANIVORE!");
-		for (size_t i = 0; i < 20; i++)
-		{
-			encoder_networks.push_back(1);
-		}
-	}
-
-	received_data = node->getParam(CKSP(encoder_init_strategies), encoder_init_strategies);
-	if (!received_data)
-	{
-		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER INIT STRATEGIES! DEFAULTING TO BOOT TO ZERO!");
-		for (size_t i = 0; i < 20; i++)
-		{
-			encoder_init_strategies.push_back(0);
-		}
-	}
-
-	received_data = node->getParam(CKSP(encoder_control_modes), encoder_control_modes);
-	if (!received_data)
-	{
-		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER CONTROL MODES! DEFAULTING TO UNUSED!");
-		for (size_t i = 0; i < 20; i++)
-		{
-			encoder_control_modes.push_back(0);
-		}
-	}
-
-	received_data = node->getParam(CKSP(encoder_magnetic_offsets), encoder_magnetic_offsets);
-	if (!received_data)
-	{
-		ROS_ERROR("COULD NOT LOAD EXTERNAL ENCODER MAGNETIC OFFSETS! DEFAULTING TO 0!");
-		for (size_t i = 0; i < 20; i++)
-		{
-			encoder_magnetic_offsets.push_back(0.0);
 		}
 	}
 }
@@ -381,7 +307,7 @@ void motor_config_transmit_loop()
 				new_motor->set_peak_output_forward((*i).second.motor.peak_output_forward);
 				new_motor->set_peak_output_reverse((*i).second.motor.peak_output_reverse);
 				new_motor->set_can_network(ck::CANNetwork::RIO_CANIVORE);
-				new_motor->set_feedback_sensor_can_id(encoder_ids[(*i).second.motor.id - 1]);
+				// new_motor->set_feedback_sensor_can_id(encoder_ids[(*i).second.motor.id - 1]);
 			}
 
 			bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
@@ -1131,50 +1057,129 @@ void imu_config_thread()
 	}
 }
 
-void encoder_transmit_loop(void)
+std::mutex led_control_mutex;
+class LEDTracker
+{
+public:
+	rio_control_node::LED_Control_Data led;
+	ros::Time active_time;
+};
+
+static std::map<int32_t, LEDTracker> led_control_map;
+
+void ledControlCallback(const rio_control_node::LED_Control &msg)
+{
+	std::lock_guard<std::mutex> lock(led_control_mutex);
+	for (size_t i = 0; i < msg.led_control.size(); i++)
+	{
+		LEDTracker updated_tracked_led;
+		updated_tracked_led.led = msg.led_control[i];
+		updated_tracked_led.active_time = ros::Time::now() + ros::Duration(MOTOR_CONTROL_TIMEOUT);
+
+		led_control_map[msg.led_control[i].id] = updated_tracked_led;
+	}
+}
+
+void led_transmit_loop(void)
 {
 	void *publisher = zmq_socket(context, ZMQ_RADIO);
 
-	if (zmq_connect(publisher, ROBOT_CONNECT_STRING))
+	int rc = zmq_connect(publisher, ROBOT_CONNECT_STRING);
+
+	if (rc < 0)
 	{
-		ROS_ERROR("Failed to initialize encoder config publisher!");
+		ROS_INFO("Failed to initialize led publisher");
 	}
 
 	char buffer[10000];
-	memset(buffer, '\0', 10000);
 
-	ros::Rate rate(10);
+	memset(buffer, 0, 10000);
+
+	ros::Rate rate(30);
 
 	while (ros::ok())
 	{
-		ck::EncoderConfig encoder_config;
-		for (size_t i = 0; i < 20; i++)
 		{
-			if (encoder_ids[i] != 0)
+			std::lock_guard<std::mutex> lock(led_control_mutex);
+			static ck::LEDControl led_control;
+			led_control.clear_led_control();
+			led_control.Clear();
+
+			std::vector<std::map<int32_t, LEDTracker>::iterator> timed_out_led_list;
+
+			for (std::map<int32_t, LEDTracker>::iterator i = led_control_map.begin();
+				 i != led_control_map.end();
+				 i++)
 			{
-				ck::EncoderConfig_EncoderConfigData *config = encoder_config.add_encoder_config();
+				ck::LEDControl::LEDControlData *new_led = led_control.add_led_control();
 
-				config->set_id(encoder_ids[i]);
-				config->set_encoder_type((ck::EncoderConfig::EncoderConfigData::EncoderType)encoder_types[i]);
-				config->set_sensor_source((ck::EncoderConfig::EncoderConfigData::EncoderSensorSource)encoder_sources[i]);
-				config->set_can_network((ck::CANNetwork)encoder_networks[i]);
-				config->set_magnetic_offset(encoder_magnetic_offsets[i]);
-				config->set_initialization_strategy((ck::EncoderConfig::EncoderConfigData::InitializationStrategy)encoder_init_strategies[i]);
+				new_led->set_id((*i).second.led.id);
+				new_led->set_can_network((ck::CANNetwork)(*i).second.led.can_network);
+				new_led->set_led_type((ck::LEDControl::LEDControlData::LEDStripType)(*i).second.led.led_strip_type);
+				new_led->set_vbat_config((ck::LEDControl::LEDControlData::VBATConfigType)((*i).second.led.vbat_config));
+				new_led->set_vbat_duty_cycle((double)((*i).second.led.vbat_duty_cycle));
+				new_led->set_led_control_mode((ck::LEDControl::LEDControlData::LEDControlMode)((*i).second.led.led_control_mode));
+				ck::LEDControl::LEDColor* led_color = new ck::LEDControl::LEDColor();
+				ck::RGBWColor* rgbw_color = new ck::RGBWColor();
+				rgbw_color->set_r((*i).second.led.color.rgbw_color.R);
+				rgbw_color->set_g((*i).second.led.color.rgbw_color.G);
+				rgbw_color->set_b((*i).second.led.color.rgbw_color.B);
+				rgbw_color->set_w((*i).second.led.color.rgbw_color.W);
+				led_color->set_allocated_rgbw_color(rgbw_color);
+				led_color->set_num_leds((*i).second.led.color.num_leds);
+				led_color->set_start_index((*i).second.led.color.start_index);
+				new_led->set_allocated_color(led_color);
+
+				for (auto it = ((*i).second.led.animation.begin());
+				 it != ((*i).second.led.animation.end());
+				 it++)
+				 {
+					ck::LEDAnimation* animation = new_led->add_animation();
+					animation->set_index((*it).index);
+					animation->set_brightness((*it).brightness);
+					animation->set_speed((*it).speed);
+					animation->set_num_led((*it).num_led);
+					ck::RGBWColor* animation_color = new ck::RGBWColor();
+					animation_color->set_r((*it).color.R);
+					animation_color->set_g((*it).color.G);
+					animation_color->set_b((*it).color.B);
+					animation_color->set_w((*it).color.W);
+					animation->set_allocated_color(animation_color);
+					animation->set_animation_type((ck::LEDAnimation::AnimationType)(*it).animation_type);
+					animation->set_direction((ck::LEDAnimation::Direction)(*it).direction);
+					animation->set_offset((*it).offset);
+					animation->set_slot((*it).slot);
+				 }
+
+				if ((*i).second.active_time < ros::Time::now())
+				{
+					timed_out_led_list.push_back(i);
+				}
 			}
-		}
 
-		if (!encoder_config.SerializeToArray(buffer, 10000))
-		{
-			ROS_INFO("Failed to serialize encoder config!");
-		}
-		else
-		{
-			zmq_msg_t message;
-			zmq_msg_init_size(&message, encoder_config.ByteSizeLong());
-			memcpy(zmq_msg_data(&message), buffer, encoder_config.ByteSizeLong());
-			zmq_msg_set_group(&message, "encoderconfig");
-			zmq_msg_send(&message, publisher, 0);
-			zmq_msg_close(&message);
+			for (std::vector<std::map<int32_t, LEDTracker>::iterator>::iterator i = timed_out_led_list.begin();
+				 i != timed_out_led_list.end();
+				 i++)
+			{
+				led_control_map.erase((*i));
+			}
+
+			bool serialize_status = led_control.SerializeToArray(buffer, 10000);
+
+			if (!serialize_status)
+			{
+				ROS_INFO("Failed to serialize led status!!");
+			}
+			else
+			{
+				zmq_msg_t message;
+				zmq_msg_init_size(&message, led_control.ByteSizeLong());
+				memcpy(zmq_msg_data(&message), buffer, led_control.ByteSizeLong());
+				zmq_msg_set_group(&message, "ledcontrol");
+				// std::cout << "Sending message..." << std::endl;
+				zmq_msg_send(&message, publisher, 0);
+				zmq_msg_close(&message);
+			}
 		}
 
 		rate.sleep();
@@ -1212,13 +1217,14 @@ int main(int argc, char **argv)
 	std::thread motorConfigSendThread(motor_config_transmit_loop);
 	std::thread processOverrideHeartbeat(process_override_heartbeat_thread);
 	std::thread imuConfigThread(imu_config_thread);
-	// std::thread encoderConfigSendThread(encoder_transmit_loop);
+	std::thread ledControlThread(led_transmit_loop);
 
 	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
 	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
 	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback);
 
 	ros::Subscriber solenoidControl = node->subscribe("SolenoidControl", 100, solenoidControlCallback);
+	ros::Subscriber ledControl = node->subscribe("LEDControl", 100, ledControlCallback);
 
 	ros::Subscriber modeTuningConfig = node->subscribe("MotorTuningConfiguration", 100, motorTuningConfigCallback);
 	ros::Subscriber modeTuningControl = node->subscribe("MotorTuningControl", 100, motorTuningControlCallback);
@@ -1231,7 +1237,7 @@ int main(int argc, char **argv)
 	motorConfigSendThread.join();
 	processOverrideHeartbeat.join();
 	imuConfigThread.join();
-	// encoderConfigSendThread.join();
+	ledControlThread.join();
 
 	if (sigintCalled)
 	{
