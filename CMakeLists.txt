@@ -56,6 +56,10 @@ add_message_files(
   Encoder_Configuration.msg
   Encoder_Data.msg
   Encoder_Sensor_Data.msg
+  LED_Animation.msg
+  LED_Color.msg
+  LED_Control.msg
+  LED_Control_Data.msg
   Motor.msg
   Motor_Control.msg
   Motor_Config.msg
@@ -65,6 +69,7 @@ add_message_files(
   IMU_Sensor_Data.msg
   IMU_Data.msg
   Cal_Override_Mode.msg
+  RGBW_Color.msg
   Solenoid.msg
   Solenoid_Info.msg
   Solenoid_Control.msg

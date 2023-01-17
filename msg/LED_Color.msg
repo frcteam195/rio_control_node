@@ -1,0 +1,3 @@
+RGBW_Color rgbw_color
+int32 start_index
+int32 num_leds
