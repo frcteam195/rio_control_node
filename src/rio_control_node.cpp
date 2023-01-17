@@ -935,8 +935,6 @@ void process_imu_data(zmq_msg_t &message)
 			odometry_data.pose.pose.position.y = pitch;
 			odometry_data.pose.pose.position.z = yaw;
 
-			imu_data_pub.publish(odometry_data);
-
 			static std::list<float> positions;
 			static std::list<ros::Time> times;
 			static std::list<float> speeds;
@@ -1004,6 +1002,7 @@ void process_imu_data(zmq_msg_t &message)
 			imu_heading_pub.publish(heading);
 			imu_dps_pub.publish(raw_dps);
 		}
+		imu_data_pub.publish(odometry_data);
 	}
 }
 
