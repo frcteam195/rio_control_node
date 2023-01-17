@@ -1,0 +1,23 @@
+# AnimationType enum
+int8 ANIMATIONTYPE_COLORFLOW=0
+int8 ANIMATIONTYPE_FIRE=1
+int8 ANIMATIONTYPE_LARSON=2
+int8 ANIMATIONTYPE_RAINBOW=3
+int8 ANIMATIONTYPE_RGBFADE=4
+int8 ANIMATIONTYPE_SINGLEFADE=5
+int8 ANIMATIONTYPE_TWINKLE=6
+int8 ANIMATIONTYPE_TWINKLEOFF=7
+
+# Direction enum
+int8 DIRECTION_FORWARD=0
+int8 DIRECTION_BACKWARD=0
+
+int32 index
+float64 brightness
+float64 speed
+int32 num_led
+RGBW_Color color
+int8 animation_type
+int8 direction
+int32 offset
+int32 slot
