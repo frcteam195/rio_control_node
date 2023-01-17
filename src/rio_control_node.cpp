@@ -98,6 +98,10 @@ static std::vector<float> gear_ratio_to_output_shaft;
 static std::vector<float> motor_ticks_per_revolution;
 static std::vector<float> motor_ticks_velocity_sample_window;
 
+static std::vector<int> motor_ids_to_override_encoder;
+static std::vector<int> remote_encoder_ids;
+static std::map<int, int> motor_remote_encoder_mappings;
+
 ros::ServiceClient &getNTSetBoolSrv()
 {
 	if (!nt_setbool_client)
@@ -161,6 +165,24 @@ void load_config_params()
 			 i++)
 		{
 			motor_ticks_velocity_sample_window.push_back(0.1);
+		}
+	}
+
+	received_data = node->getParam(CKSP(motor_ids_to_override_encoder), motor_ids_to_override_encoder) &&
+					node->getParam(CKSP(remote_encoder_ids), remote_encoder_ids);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT LOAD REMOTE ENCODER IDS");
+	}
+	else if (motor_ids_to_override_encoder.size() != remote_encoder_ids.size())
+	{
+		ROS_ERROR("REMOTE ENCODER CONFIGURATION ERROR");
+	}
+	else
+	{
+		for (size_t i = 0; i < motor_ids_to_override_encoder.size(); i++)
+		{
+			motor_remote_encoder_mappings[motor_ids_to_override_encoder[i]] = remote_encoder_ids[i];
 		}
 	}
 }
@@ -309,7 +331,10 @@ void motor_config_transmit_loop()
 				new_motor->set_peak_output_forward((*i).second.motor.peak_output_forward);
 				new_motor->set_peak_output_reverse((*i).second.motor.peak_output_reverse);
 				new_motor->set_can_network(ck::CANNetwork::RIO_CANIVORE);
-				// new_motor->set_feedback_sensor_can_id(encoder_ids[(*i).second.motor.id - 1]);
+				if (motor_remote_encoder_mappings.count((*i).second.motor.id))
+				{
+					new_motor->set_feedback_sensor_can_id(motor_remote_encoder_mappings[(*i).second.motor.id]);
+				}
 			}
 
 			bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
