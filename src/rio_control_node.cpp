@@ -1015,7 +1015,7 @@ void process_imu_data(zmq_msg_t &message)
 			std_msgs::Float32 last_yaw;
 			last_yaw.data = first_position * 180.0 / M_PI;
 			std_msgs::Float32 raw_dps;
-			raw_dps.data = imuSensorData.x_rps() * 180.0 / M_PI;
+			raw_dps.data = imuSensorData.z_rps() * 180.0 / M_PI;
 
 			static ros::Publisher imu_last_yaw = node->advertise<std_msgs::Float32>("/lastyaw", 100);
 			static ros::Publisher imu_heading_pub = node->advertise<std_msgs::Float32>("/rawyaw", 100);
