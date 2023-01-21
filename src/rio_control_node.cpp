@@ -1017,14 +1017,14 @@ void process_imu_data(zmq_msg_t &message)
 			std_msgs::Float32 raw_dps;
 			raw_dps.data = imuSensorData.z_rps() * 180.0 / M_PI;
 
-			static ros::Publisher imu_last_yaw = node->advertise<std_msgs::Float32>("/lastyaw", 100);
-			static ros::Publisher imu_heading_pub = node->advertise<std_msgs::Float32>("/rawyaw", 100);
-			static ros::Publisher imu_speed_pub = node->advertise<std_msgs::Float32>("/rawyawspeed", 100);
+			// static ros::Publisher imu_last_yaw = node->advertise<std_msgs::Float32>("/lastyaw", 100);
+			// static ros::Publisher imu_heading_pub = node->advertise<std_msgs::Float32>("/rawyaw", 100);
+			// static ros::Publisher imu_speed_pub = node->advertise<std_msgs::Float32>("/rawyawspeed", 100);
 			static ros::Publisher imu_dps_pub = node->advertise<std_msgs::Float32>("/rawdpsgyro", 100);
 
-			imu_last_yaw.publish(last_yaw);
-			imu_speed_pub.publish(heading_rate);
-			imu_heading_pub.publish(heading);
+			// imu_last_yaw.publish(last_yaw);
+			// imu_speed_pub.publish(heading_rate);
+			// imu_heading_pub.publish(heading);
 			imu_dps_pub.publish(raw_dps);
 		}
 		imu_data_pub.publish(odometry_data);
