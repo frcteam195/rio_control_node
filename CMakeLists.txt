@@ -10,7 +10,7 @@ project(${PROJECT_NAME})
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp message_generation std_msgs network_tables_node)
+find_package(catkin REQUIRED COMPONENTS roscpp message_generation std_msgs network_tables_node ck_ros_base_msgs_node)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -65,10 +65,10 @@ find_package(catkin REQUIRED COMPONENTS roscpp message_generation std_msgs netwo
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs  # Or other packages containing msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -104,7 +104,7 @@ catkin_package(
 #  LIBRARIES rio_control_node
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
-   CATKIN_DEPENDS message_generation nav_msgs network_tables_node
+   CATKIN_DEPENDS message_generation nav_msgs network_tables_node ck_ros_base_msgs_node
 )
 
 ###########
@@ -238,7 +238,7 @@ endif(ROBOT_ARCHITECTURE_AARCH64)
 
 target_link_libraries(${PROJECT_NAME} ${PROTOBUF_LIBRARY})
 
-add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 #############
 ## Testing ##
