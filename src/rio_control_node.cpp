@@ -33,24 +33,24 @@
 #include <signal.h>
 
 #include <nav_msgs/Odometry.h>
-#include <rio_control_node/Joystick_Status.h>
-#include <rio_control_node/Robot_Status.h>
-#include <rio_control_node/Motor_Control.h>
-#include <rio_control_node/Motor_Status.h>
-#include <rio_control_node/IMU_Data.h>
-#include <rio_control_node/IMU_Sensor_Data.h>
-#include <rio_control_node/Encoder_Data.h>
-#include <rio_control_node/Encoder_Sensor_Data.h>
-#include <rio_control_node/Encoder_Config.h>
-#include <rio_control_node/Encoder_Configuration.h>
-#include <rio_control_node/Motor_Configuration.h>
-#include <rio_control_node/Cal_Override_Mode.h>
-#include <rio_control_node/Solenoid_Control.h>
-#include <rio_control_node/Solenoid_Status.h>
-#include <rio_control_node/LED_Animation.h>
-#include <rio_control_node/LED_Color.h>
-#include <rio_control_node/LED_Control.h>
-#include <rio_control_node/LED_Control_Data.h>
+#include <ck_ros_base_msgs_node/Joystick_Status.h>
+#include <ck_ros_base_msgs_node/Robot_Status.h>
+#include <ck_ros_base_msgs_node/Motor_Control.h>
+#include <ck_ros_base_msgs_node/Motor_Status.h>
+#include <ck_ros_base_msgs_node/IMU_Data.h>
+#include <ck_ros_base_msgs_node/IMU_Sensor_Data.h>
+#include <ck_ros_base_msgs_node/Encoder_Data.h>
+#include <ck_ros_base_msgs_node/Encoder_Sensor_Data.h>
+#include <ck_ros_base_msgs_node/Encoder_Config.h>
+#include <ck_ros_base_msgs_node/Encoder_Configuration.h>
+#include <ck_ros_base_msgs_node/Motor_Configuration.h>
+#include <ck_ros_base_msgs_node/Cal_Override_Mode.h>
+#include <ck_ros_base_msgs_node/Solenoid_Control.h>
+#include <ck_ros_base_msgs_node/Solenoid_Status.h>
+#include <ck_ros_base_msgs_node/LED_Animation.h>
+#include <ck_ros_base_msgs_node/LED_Color.h>
+#include <ck_ros_base_msgs_node/LED_Control.h>
+#include <ck_ros_base_msgs_node/LED_Control_Data.h>
 
 #include <network_tables_node/NTSetBool.h>
 #include <network_tables_node/NTSetDouble.h>
@@ -87,7 +87,7 @@ std::mutex motor_config_mutex;
 class MotorConfigTracker
 {
 public:
-	rio_control_node::Motor_Config motor;
+	ck_ros_base_msgs_node::Motor_Config motor;
 };
 
 static std::map<int32_t, MotorConfigTracker> motor_config_map;
@@ -187,7 +187,7 @@ void load_config_params()
 	}
 }
 
-void modeOverrideCallback(const rio_control_node::Cal_Override_Mode &msg)
+void modeOverrideCallback(const ck_ros_base_msgs_node::Cal_Override_Mode &msg)
 {
 	std::lock_guard<std::mutex> lock(override_mode_mutex);
 	overrideModeS.overrideMode = (OVERRIDE_MODE)msg.operation_mode;
@@ -222,12 +222,12 @@ double convertNativeUnitsToVelocity(double nativeUnits, int motorID)
 	return (nativeUnits / motor_ticks_per_revolution[motorID - 1] / gear_ratio_to_output_shaft[motorID - 1] / motor_ticks_velocity_sample_window[motorID - 1]) * 60.0;
 }
 
-void processMotorConfigMsg(const rio_control_node::Motor_Configuration &msg)
+void processMotorConfigMsg(const ck_ros_base_msgs_node::Motor_Configuration &msg)
 {
 	std::lock_guard<std::mutex> lock(motor_config_mutex);
 	for (size_t i = 0; i < msg.motors.size(); i++)
 	{
-		rio_control_node::Motor_Config updated_motor;
+		ck_ros_base_msgs_node::Motor_Config updated_motor;
 		updated_motor = msg.motors[i];
 
 		MotorConfigTracker updated_tracked_motor;
@@ -237,7 +237,7 @@ void processMotorConfigMsg(const rio_control_node::Motor_Configuration &msg)
 	}
 }
 
-void motorTuningConfigCallback(const rio_control_node::Motor_Configuration &msg)
+void motorTuningConfigCallback(const ck_ros_base_msgs_node::Motor_Configuration &msg)
 {
 	if (overrideModeS.overrideMode == OVERRIDE_MODE::TUNING_PIDS)
 	{
@@ -245,7 +245,7 @@ void motorTuningConfigCallback(const rio_control_node::Motor_Configuration &msg)
 	}
 }
 
-void motorConfigCallback(const rio_control_node::Motor_Configuration &msg)
+void motorConfigCallback(const ck_ros_base_msgs_node::Motor_Configuration &msg)
 {
 	if (overrideModeS.overrideMode == OVERRIDE_MODE::NORMAL_OPERATION)
 	{
@@ -356,14 +356,14 @@ void motor_config_transmit_loop()
 		}
 		{
 			std::lock_guard<std::mutex> lock(motor_config_mutex);
-			rio_control_node::Motor_Configuration overall_motor_config;
+			ck_ros_base_msgs_node::Motor_Configuration overall_motor_config;
 			for (std::map<int32_t, MotorConfigTracker>::iterator i = motor_config_map.begin();
 				 i != motor_config_map.end();
 				 i++)
 			{
 				overall_motor_config.motors.push_back((*i).second.motor);
 			}
-			static ros::Publisher overall_config_publisher = node->advertise<rio_control_node::Motor_Configuration>("/MotorConfigurationFinal", 10);
+			static ros::Publisher overall_config_publisher = node->advertise<ck_ros_base_msgs_node::Motor_Configuration>("/MotorConfigurationFinal", 10);
 			overall_config_publisher.publish(overall_motor_config);
 		}
 
@@ -375,18 +375,18 @@ std::mutex solenoid_control_mutex;
 class SolenoidTracker
 {
 public:
-	rio_control_node::Solenoid solenoid;
+	ck_ros_base_msgs_node::Solenoid solenoid;
 	ros::Time active_time;
 };
 
 static std::map<int32_t, SolenoidTracker> solenoid_control_map;
 
-void solenoidControlCallback(const rio_control_node::Solenoid_Control &msg)
+void solenoidControlCallback(const ck_ros_base_msgs_node::Solenoid_Control &msg)
 {
 	std::lock_guard<std::mutex> lock(solenoid_control_mutex);
 	for (size_t i = 0; i < msg.solenoids.size(); i++)
 	{
-		rio_control_node::Solenoid updated_solenoid;
+		ck_ros_base_msgs_node::Solenoid updated_solenoid;
 		updated_solenoid.id = msg.solenoids[i].id;
 		updated_solenoid.output_value = msg.solenoids[i].output_value;
 		updated_solenoid.module_type = msg.solenoids[i].module_type;
@@ -475,7 +475,7 @@ void solenoid_transmit_loop()
 
 void process_solenoid_status(zmq_msg_t &message)
 {
-	static ros::Publisher solenoid_status_pub = node->advertise<rio_control_node::Solenoid_Status>("SolenoidStatus", 1);
+	static ros::Publisher solenoid_status_pub = node->advertise<ck_ros_base_msgs_node::Solenoid_Status>("SolenoidStatus", 1);
 	static ck::SolenoidStatus status;
 
 	void *data = zmq_msg_data(&message);
@@ -483,12 +483,12 @@ void process_solenoid_status(zmq_msg_t &message)
 	if (parse_result)
 	{
 
-		rio_control_node::Solenoid_Status solenoid_status;
+		ck_ros_base_msgs_node::Solenoid_Status solenoid_status;
 
 		for (int i = 0; i < status.solenoids_size(); i++)
 		{
 			const ck::SolenoidStatus::Solenoid &solenoid = status.solenoids(i);
-			rio_control_node::Solenoid_Info solenoid_info;
+			ck_ros_base_msgs_node::Solenoid_Info solenoid_info;
 
 			solenoid_info.id = solenoid.id();
 			solenoid_info.solenoid_value = solenoid.solenoid_value();
@@ -504,18 +504,18 @@ std::mutex motor_control_mutex;
 class MotorTracker
 {
 public:
-	rio_control_node::Motor motor;
+	ck_ros_base_msgs_node::Motor motor;
 	ros::Time active_time;
 };
 
 static std::map<int32_t, MotorTracker> motor_control_map;
 
-void processMotorControlMsg(const rio_control_node::Motor_Control &msg)
+void processMotorControlMsg(const ck_ros_base_msgs_node::Motor_Control &msg)
 {
 	std::lock_guard<std::mutex> lock(motor_control_mutex);
 	for (size_t i = 0; i < msg.motors.size(); i++)
 	{
-		rio_control_node::Motor updated_motor;
+		ck_ros_base_msgs_node::Motor updated_motor;
 		updated_motor.id = msg.motors[i].id;
 		updated_motor.output_value = msg.motors[i].output_value;
 		updated_motor.controller_type = msg.motors[i].controller_type;
@@ -530,7 +530,7 @@ void processMotorControlMsg(const rio_control_node::Motor_Control &msg)
 	}
 }
 
-void motorTuningControlCallback(const rio_control_node::Motor_Control &msg)
+void motorTuningControlCallback(const ck_ros_base_msgs_node::Motor_Control &msg)
 {
 	if (overrideModeS.overrideMode == OVERRIDE_MODE::TUNING_PIDS)
 	{
@@ -538,7 +538,7 @@ void motorTuningControlCallback(const rio_control_node::Motor_Control &msg)
 	}
 }
 
-void motorControlCallback(const rio_control_node::Motor_Control &msg)
+void motorControlCallback(const ck_ros_base_msgs_node::Motor_Control &msg)
 {
 	if (overrideModeS.overrideMode == OVERRIDE_MODE::NORMAL_OPERATION)
 	{
@@ -584,14 +584,14 @@ void motor_transmit_loop()
 				new_motor->set_controller_type((ck::MotorControl_Motor_ControllerType)(*i).second.motor.controller_type);
 				new_motor->set_id((*i).second.motor.id);
 
-				if ((*i).second.motor.control_mode == rio_control_node::Motor::MOTION_MAGIC ||
-					(*i).second.motor.control_mode == rio_control_node::Motor::POSITION)
+				if ((*i).second.motor.control_mode == ck_ros_base_msgs_node::Motor::MOTION_MAGIC ||
+					(*i).second.motor.control_mode == ck_ros_base_msgs_node::Motor::POSITION)
 				{
 					new_motor->set_output_value((*i).second.motor.output_value *
 												gear_ratio_to_output_shaft[(*i).second.motor.id - 1] *
 												motor_ticks_per_revolution[(*i).second.motor.id - 1]);
 				}
-				else if ((*i).second.motor.control_mode == rio_control_node::Motor::VELOCITY)
+				else if ((*i).second.motor.control_mode == ck_ros_base_msgs_node::Motor::VELOCITY)
 				{
 					new_motor->set_output_value((*i).second.motor.output_value *
 												gear_ratio_to_output_shaft[(*i).second.motor.id - 1] *
@@ -636,14 +636,14 @@ void motor_transmit_loop()
 		}
 		{
 			std::lock_guard<std::mutex> lock(motor_control_mutex);
-			rio_control_node::Motor_Control overall_motor_control;
+			ck_ros_base_msgs_node::Motor_Control overall_motor_control;
 			for (std::map<int32_t, MotorTracker>::iterator i = motor_control_map.begin();
 				 i != motor_control_map.end();
 				 i++)
 			{
 				overall_motor_control.motors.push_back((*i).second.motor);
 			}
-			static ros::Publisher overall_control_publisher = node->advertise<rio_control_node::Motor_Control>("/MotorControlFinal", 10);
+			static ros::Publisher overall_control_publisher = node->advertise<ck_ros_base_msgs_node::Motor_Control>("/MotorControlFinal", 10);
 			overall_control_publisher.publish(overall_motor_control);
 		}
 
@@ -658,7 +658,7 @@ constexpr unsigned int str2int(const char *str, int h = 0)
 
 void process_motor_status(zmq_msg_t &message)
 {
-	static ros::Publisher motor_status_pub = node->advertise<rio_control_node::Motor_Status>("MotorStatus", 1);
+	static ros::Publisher motor_status_pub = node->advertise<ck_ros_base_msgs_node::Motor_Status>("MotorStatus", 1);
 	static ck::MotorStatus status;
 
 	void *data = zmq_msg_data(&message);
@@ -666,12 +666,12 @@ void process_motor_status(zmq_msg_t &message)
 	if (parse_result)
 	{
 
-		rio_control_node::Motor_Status motor_status;
+		ck_ros_base_msgs_node::Motor_Status motor_status;
 
 		for (int i = 0; i < status.motors_size(); i++)
 		{
 			const ck::MotorStatus::Motor &motor = status.motors(i);
-			rio_control_node::Motor_Info motor_info;
+			ck_ros_base_msgs_node::Motor_Info motor_info;
 
 			motor_info.id = motor.id();
 			motor_info.sensor_position = convertNativeUnitsToPosition(motor.sensor_position(), motor.id());
@@ -691,24 +691,24 @@ void process_motor_status(zmq_msg_t &message)
 			motor_info.raw_output_percent = motor.raw_output_percent();
 			switch (motor_info.control_mode)
 			{
-			case rio_control_node::Motor_Info::POSITION:
-			case rio_control_node::Motor_Info::MOTION_MAGIC:
-			case rio_control_node::Motor_Info::MOTION_PROFILE:
-			case rio_control_node::Motor_Info::MOTION_PROFILE_ARC:
+			case ck_ros_base_msgs_node::Motor_Info::POSITION:
+			case ck_ros_base_msgs_node::Motor_Info::MOTION_MAGIC:
+			case ck_ros_base_msgs_node::Motor_Info::MOTION_PROFILE:
+			case ck_ros_base_msgs_node::Motor_Info::MOTION_PROFILE_ARC:
 			{
 				motor_info.commanded_output = convertNativeUnitsToPosition(motor.commanded_output(), motor.id());
 			}
 			break;
-			case rio_control_node::Motor_Info::VELOCITY:
+			case ck_ros_base_msgs_node::Motor_Info::VELOCITY:
 			{
 				motor_info.commanded_output = convertNativeUnitsToVelocity(motor.commanded_output(), motor.id());
 			}
 			break;
-			case rio_control_node::Motor_Info::CURRENT:
-			case rio_control_node::Motor_Info::FOLLOWER:
-			case rio_control_node::Motor_Info::PERCENT_OUTPUT:
-			case rio_control_node::Motor_Info::MUSIC_TONE:
-			case rio_control_node::Motor_Info::DISABLED:
+			case ck_ros_base_msgs_node::Motor_Info::CURRENT:
+			case ck_ros_base_msgs_node::Motor_Info::FOLLOWER:
+			case ck_ros_base_msgs_node::Motor_Info::PERCENT_OUTPUT:
+			case ck_ros_base_msgs_node::Motor_Info::MUSIC_TONE:
+			case ck_ros_base_msgs_node::Motor_Info::DISABLED:
 			{
 				motor_info.commanded_output = motor.commanded_output();
 			}
@@ -723,7 +723,7 @@ void process_motor_status(zmq_msg_t &message)
 
 void process_joystick_status(zmq_msg_t &message)
 {
-	static ros::Publisher joystick_pub = node->advertise<rio_control_node::Joystick_Status>("JoystickStatus", 1);
+	static ros::Publisher joystick_pub = node->advertise<ck_ros_base_msgs_node::Joystick_Status>("JoystickStatus", 1);
 	static ck::JoystickStatus status;
 
 	void *data = zmq_msg_data(&message);
@@ -731,12 +731,12 @@ void process_joystick_status(zmq_msg_t &message)
 	if (parse_result)
 	{
 
-		rio_control_node::Joystick_Status joystick_status;
+		ck_ros_base_msgs_node::Joystick_Status joystick_status;
 
 		for (int i = 0; i < status.joysticks_size(); i++)
 		{
 			const ck::JoystickStatus::Joystick &joystick = status.joysticks(i);
-			rio_control_node::Joystick stick;
+			ck_ros_base_msgs_node::Joystick stick;
 
 			stick.index = joystick.index();
 
@@ -765,14 +765,14 @@ void process_joystick_status(zmq_msg_t &message)
 void process_robot_status(zmq_msg_t &message)
 {
 	static ck::RobotStatus status;
-	static ros::Publisher robot_status_pub = node->advertise<rio_control_node::Robot_Status>("RobotStatus", 1);
+	static ros::Publisher robot_status_pub = node->advertise<ck_ros_base_msgs_node::Robot_Status>("RobotStatus", 1);
 
 	void *data = zmq_msg_data(&message);
 	bool parse_result = status.ParseFromArray(data, zmq_msg_size(&message));
 
 	if (parse_result)
 	{
-		rio_control_node::Robot_Status robot_status;
+		ck_ros_base_msgs_node::Robot_Status robot_status;
 		robot_status.alliance = status.alliance();
 		robot_status.robot_state = status.robot_state();
 		robot_status.match_time = status.match_time();
@@ -981,12 +981,12 @@ void process_encoder_data(zmq_msg_t &message)
 
 	if (parse_result)
 	{
-		rio_control_node::Encoder_Data encoder_data;
+		ck_ros_base_msgs_node::Encoder_Data encoder_data;
 
 		for (int i = 0; i < zmqEncoderData.encoder_sensor_size(); i++)
 		{
 			const ck::EncoderData::EncoderSensorData &zmqEncoderSensorData = zmqEncoderData.encoder_sensor(i);
-			rio_control_node::Encoder_Sensor_Data encoder_sensor_data;
+			ck_ros_base_msgs_node::Encoder_Sensor_Data encoder_sensor_data;
 
 			encoder_sensor_data.id = zmqEncoderSensorData.id();
 			encoder_sensor_data.absolute_position = zmqEncoderSensorData.sensor_absolute_position();
@@ -1127,13 +1127,13 @@ std::mutex led_control_mutex;
 class LEDTracker
 {
 public:
-	rio_control_node::LED_Control_Data led;
+	ck_ros_base_msgs_node::LED_Control_Data led;
 	ros::Time active_time;
 };
 
 static std::map<int32_t, LEDTracker> led_control_map;
 
-void ledControlCallback(const rio_control_node::LED_Control &msg)
+void ledControlCallback(const ck_ros_base_msgs_node::LED_Control &msg)
 {
 	std::lock_guard<std::mutex> lock(led_control_mutex);
 	for (size_t i = 0; i < msg.led_control.size(); i++)
@@ -1264,7 +1264,7 @@ int main(int argc, char **argv)
 	 * You must call one of the versions of ros::init() before using any other
 	 * part of the ROS system.
 	 */
-	ros::init(argc, argv, "rio_control_node", ros::init_options::NoSigintHandler);
+	ros::init(argc, argv, "ck_ros_base_msgs_node", ros::init_options::NoSigintHandler);
 	// GOOGLE_PROTOBUF_VERIFY_VERSION;
 
 	context = zmq_ctx_new();
