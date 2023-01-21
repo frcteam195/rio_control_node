@@ -1345,15 +1345,15 @@ int main(int argc, char **argv)
 	std::thread imuConfigThread(imu_config_thread);
 	std::thread ledControlThread(led_transmit_loop);
 
-	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback);
-	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback);
-	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback);
+	ros::Subscriber motorControl = node->subscribe("MotorControl", 100, motorControlCallback, ros::TransportHints().tcpNoDelay());
+	ros::Subscriber motorConfig = node->subscribe("MotorConfiguration", 100, motorConfigCallback, ros::TransportHints().tcpNoDelay());
+	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback, ros::TransportHints().tcpNoDelay());
 
-	ros::Subscriber solenoidControl = node->subscribe("SolenoidControl", 100, solenoidControlCallback);
-	ros::Subscriber ledControl = node->subscribe("LEDControl", 100, ledControlCallback);
+	ros::Subscriber solenoidControl = node->subscribe("SolenoidControl", 100, solenoidControlCallback, ros::TransportHints().tcpNoDelay());
+	ros::Subscriber ledControl = node->subscribe("LEDControl", 100, ledControlCallback, ros::TransportHints().tcpNoDelay());
 
-	ros::Subscriber modeTuningConfig = node->subscribe("MotorTuningConfiguration", 100, motorTuningConfigCallback);
-	ros::Subscriber modeTuningControl = node->subscribe("MotorTuningControl", 100, motorTuningControlCallback);
+	ros::Subscriber modeTuningConfig = node->subscribe("MotorTuningConfiguration", 100, motorTuningConfigCallback, ros::TransportHints().tcpNoDelay());
+	ros::Subscriber modeTuningControl = node->subscribe("MotorTuningControl", 100, motorTuningControlCallback, ros::TransportHints().tcpNoDelay());
 
 	ros::spin();
 
