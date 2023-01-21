@@ -58,6 +58,8 @@
 
 #include <math.h>
 
+#include <ck_utilities/CKMath.hpp>
+
 #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
 // #define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
 
