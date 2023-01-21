@@ -59,6 +59,8 @@
 #include <math.h>
 
 #include <ck_utilities/CKMath.hpp>
+#include <ck_utilities/geometry/geometry.hpp>
+#include <ck_utilities/geometry/geometry_ros_helpers.hpp>
 
 #define ROBOT_CONNECT_STRING "udp://10.1.95.2:5801"
 // #define ROBOT_CONNECT_STRING "udp://10.1.95.99:5801"	//DISABLE ROBOT DRIVE
@@ -846,129 +848,35 @@ void process_imu_data(zmq_msg_t &message)
 		odometry_data.header.frame_id = "odom";
 		odometry_data.child_frame_id = "base_link";
 
-		odometry_data.pose.pose.orientation.w = 0;
-		odometry_data.pose.pose.orientation.x = 0;
-		odometry_data.pose.pose.orientation.y = 0;
-		odometry_data.pose.pose.orientation.z = 0;
-		odometry_data.pose.pose.position.x = 0;
-		odometry_data.pose.pose.position.y = 0;
-		odometry_data.pose.pose.position.z = 0;
+        geometry::Pose empty_pose;
+		odometry_data.pose.pose = geometry::to_msg(empty_pose);
 
-		odometry_data.twist.twist.linear.x = 0;
-		odometry_data.twist.twist.linear.y = 0;
-		odometry_data.twist.twist.linear.z = 0;
+        geometry::Twist empty_twist;
+        odometry_data.twist.twist = geometry::to_msg(empty_twist);
 
-		odometry_data.twist.twist.angular.x = 0;
-		odometry_data.twist.twist.angular.y = 0;
-		odometry_data.twist.twist.angular.z = 0;
+        geometry::Covariance covariance;
+        covariance.yaw_var(0.00001);
 
-		odometry_data.pose.covariance =
-			{
-				0.001, 0.0, 0.0, 0.0, 0.0, 0.0,
-				0.0, 0.001, 0.0, 0.0, 0.0, 0.0,
-				0.0, 0.0, 0.001, 0.0, 0.0, 0.0,
-				0.0, 0.0, 0.0, 0.001, 0.0, 0.0,
-				0.0, 0.0, 0.0, 0.0, 0.001, 0.0,
-				0.0, 0.0, 0.0, 0.0, 0.0, 0.00001,
-			};
-
-		odometry_data.twist.covariance =
-			{
-				0.001, 0.0, 0.0, 0.0, 0.0, 0.0,
-				0.0, 0.001, 0.0, 0.0, 0.0, 0.0,
-				0.0, 0.0, 0.001, 0.0, 0.0, 0.0,
-				0.0, 0.0, 0.0, 0.001, 0.0, 0.0,
-				0.0, 0.0, 0.0, 0.0, 0.001, 0.0,
-				0.0, 0.0, 0.0, 0.0, 0.0, 0.001,
-			};
+        odometry_data.pose.covariance = geometry::to_msg(covariance);
 
 		for (int i = 0; i < imuData.imu_sensor_size(); i++)
 		{
 			const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
 
-			tf2::Quaternion imu_quaternion;
-			imu_quaternion.setRPY(imuSensorData.z(), imuSensorData.y(), imuSensorData.x());
+            geometry::Pose imu_orientation;
+            imu_orientation.orientation.roll(imuSensorData.z());
+            imu_orientation.orientation.pitch(imuSensorData.y());
+            imu_orientation.orientation.yaw(imuSensorData.x());
 
-			odometry_data.pose.pose.orientation.w = imu_quaternion.getW();
-			odometry_data.pose.pose.orientation.x = imu_quaternion.getX();
-			odometry_data.pose.pose.orientation.y = imu_quaternion.getY();
-			odometry_data.pose.pose.orientation.z = imu_quaternion.getZ();
+			odometry_data.pose.pose = geometry::to_msg(imu_orientation);
 
-			tf2::Matrix3x3 imu3x3(imu_quaternion);
-			tf2Scalar yaw, pitch, roll;
-			imu3x3.getRPY(roll, pitch, yaw);
-
-			odometry_data.pose.pose.position.x = roll;
-			odometry_data.pose.pose.position.y = pitch;
-			odometry_data.pose.pose.position.z = yaw;
-
-			static std::list<float> positions;
-			static std::list<ros::Time> times;
-			static std::list<float> speeds;
-			static bool first_pass = true;
-
-			if(first_pass)
-			{
-				for(int i = 0; i < 5; i++)
-				{
-					positions.push_back(yaw);
-					times.push_back(ros::Time().now());
-				}
-				for(int i = 0; i < 3; i++)
-				{
-					speeds.push_back(0);
-				}
-				first_pass = false;
-			}
-
-			float first_position = positions.front();
-			ros::Time first_time = times.front();
-
-			positions.pop_front();
-			times.pop_front();
-
-			float current_position = yaw;
-			ros::Time current_time = ros::Time().now();
-
-			positions.push_back(current_position);
-			times.push_back(current_time);
-
-			float delta_yaw = smallest_traversal(first_position, current_position) * 180.0 / M_PI;
-			float delta_time = current_time.toSec() - first_time.toSec();
-
-			float speed = delta_yaw / delta_time;
-
-			speeds.pop_front();
-			speeds.push_back(speed);
-
-			float sum = 0;
-
-			for(auto &i : speeds)
-			{
-				sum += i;
-			}
-
-			float average = sum / speeds.size();
-
-			std_msgs::Float32 heading_rate;
-			heading_rate.data = average;
-			std_msgs::Float32 heading;
-			heading.data = current_position * 180.0 / M_PI;
-			std_msgs::Float32 last_yaw;
-			last_yaw.data = first_position * 180.0 / M_PI;
 			std_msgs::Float32 raw_dps;
-			raw_dps.data = imuSensorData.z_rps() * 180.0 / M_PI;
+			raw_dps.data = ck::math::deg2rad(imuSensorData.z_rps() * 180.0 / M_PI);
 
-			// static ros::Publisher imu_last_yaw = node->advertise<std_msgs::Float32>("/lastyaw", 100);
-			// static ros::Publisher imu_heading_pub = node->advertise<std_msgs::Float32>("/rawyaw", 100);
-			// static ros::Publisher imu_speed_pub = node->advertise<std_msgs::Float32>("/rawyawspeed", 100);
 			static ros::Publisher imu_dps_pub = node->advertise<std_msgs::Float32>("/rawdpsgyro", 100);
-
-			// imu_last_yaw.publish(last_yaw);
-			// imu_speed_pub.publish(heading_rate);
-			// imu_heading_pub.publish(heading);
 			imu_dps_pub.publish(raw_dps);
 		}
+
 		imu_data_pub.publish(odometry_data);
 	}
 }
