@@ -46,35 +46,9 @@ find_package(catkin REQUIRED COMPONENTS roscpp message_generation std_msgs netwo
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  Joystick.msg
-  Joystick_Status.msg
-  Robot_Status.msg
-  Current_Limit_Configuration.msg
-  Encoder_Config.msg
-  Encoder_Configuration.msg
-  Encoder_Data.msg
-  Encoder_Sensor_Data.msg
-  LED_Animation.msg
-  LED_Color.msg
-  LED_Control.msg
-  LED_Control_Data.msg
-  Motor.msg
-  Motor_Control.msg
-  Motor_Config.msg
-  Motor_Configuration.msg
-  Motor_Info.msg
-  Motor_Status.msg
-  IMU_Sensor_Data.msg
-  IMU_Data.msg
-  Cal_Override_Mode.msg
-  RGBW_Color.msg
-  Solenoid.msg
-  Solenoid_Info.msg
-  Solenoid_Control.msg
-  Solenoid_Status.msg
-)
+# add_message_files(
+#   FILES
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(

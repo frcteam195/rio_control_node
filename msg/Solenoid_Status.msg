@@ -1,1 +1,0 @@
-Solenoid_Info[] solenoids
