@@ -871,7 +871,7 @@ void process_imu_data(zmq_msg_t &message)
 			odometry_data.pose.pose = geometry::to_msg(imu_orientation);
 
 			std_msgs::Float32 raw_dps;
-			raw_dps.data = ck::math::deg2rad(imuSensorData.z_rps() * 180.0 / M_PI);
+			raw_dps.data = ck::math::deg2rad(imuSensorData.z_rps() * 360.0);
 
 			static ros::Publisher imu_dps_pub = node->advertise<std_msgs::Float32>("/rawdpsgyro", 100);
 			imu_dps_pub.publish(raw_dps);
