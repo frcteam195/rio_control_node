@@ -1204,7 +1204,7 @@ int main(int argc, char **argv)
 	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback, ros::TransportHints().tcpNoDelay());
 
 	ros::Subscriber solenoidControl = node->subscribe("SolenoidControl", 100, solenoidControlCallback, ros::TransportHints().tcpNoDelay());
-	ros::Subscriber ledControl = node->subscribe("LEDControl", 100, ledControlCallback, ros::TransportHints().tcpNoDelay());
+	ros::Subscriber ledControl = node->subscribe("RioLedControl", 100, ledControlCallback, ros::TransportHints().tcpNoDelay());
 
 	ros::Subscriber modeTuningConfig = node->subscribe("MotorTuningConfiguration", 100, motorTuningConfigCallback, ros::TransportHints().tcpNoDelay());
 	ros::Subscriber modeTuningControl = node->subscribe("MotorTuningControl", 100, motorTuningControlCallback, ros::TransportHints().tcpNoDelay());
