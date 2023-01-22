@@ -871,10 +871,14 @@ void process_imu_data(zmq_msg_t &message)
 			odometry_data.pose.pose = geometry::to_msg(imu_orientation);
 
 			std_msgs::Float32 raw_dps;
-			raw_dps.data = ck::math::deg2rad(imuSensorData.z_rps() * 360.0);
+			raw_dps.data = imuSensorData.z_rps();
+            std_msgs::Float32 rob_data;
+            rob_data.data = imuSensorData.z_rps();
 
 			static ros::Publisher imu_dps_pub = node->advertise<std_msgs::Float32>("/rawdpsgyro", 100);
+			static ros::Publisher rob_dps_pub = node->advertise<std_msgs::Float32>("/robrawgyro", 100);
 			imu_dps_pub.publish(raw_dps);
+            rob_dps_pub.publish(rob_data);
 		}
 
 		imu_data_pub.publish(odometry_data);
