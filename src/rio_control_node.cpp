@@ -1110,8 +1110,8 @@ void led_transmit_loop(void)
 				led_color->set_start_index((*i).second.led.color.start_index);
 				new_led->set_allocated_color(led_color);
 
-				for (auto it = ((*i).second.led.animation.begin());
-				 it != ((*i).second.led.animation.end());
+				for (auto it = ((*i).second.led.animations.begin());
+				 it != ((*i).second.led.animations.end());
 				 it++)
 				 {
 					ck::LEDAnimation* animation = new_led->add_animation();
