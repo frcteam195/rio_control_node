@@ -782,6 +782,7 @@ void process_robot_status(zmq_msg_t &message)
 		robot_status.match_time = status.match_time();
 		robot_status.game_data = status.game_data().c_str();
 		robot_status.selected_auto = status.selected_auto();
+		robot_status.is_connected = status.is_connected();
 		robot_status_pub.publish(robot_status);
 
 		int minutes = floor(robot_status.match_time / 60.0);
