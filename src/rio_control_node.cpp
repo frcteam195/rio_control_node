@@ -782,6 +782,7 @@ void process_robot_status(zmq_msg_t &message)
 		robot_status.match_time = status.match_time();
 		robot_status.game_data = status.game_data().c_str();
 		robot_status.selected_auto = status.selected_auto();
+		robot_status.is_connected = status.is_connected();
 		robot_status_pub.publish(robot_status);
 
 		int minutes = floor(robot_status.match_time / 60.0);
@@ -1129,8 +1130,8 @@ void led_transmit_loop(void)
 				led_color->set_start_index((*i).second.led.color.start_index);
 				new_led->set_allocated_color(led_color);
 
-				for (auto it = ((*i).second.led.animation.begin());
-				 it != ((*i).second.led.animation.end());
+				for (auto it = ((*i).second.led.animations.begin());
+				 it != ((*i).second.led.animations.end());
 				 it++)
 				 {
 					ck::LEDAnimation* animation = new_led->add_animation();
@@ -1223,7 +1224,7 @@ int main(int argc, char **argv)
 	ros::Subscriber modeOverride = node->subscribe("OverrideMode", 10, modeOverrideCallback, ros::TransportHints().tcpNoDelay());
 
 	ros::Subscriber solenoidControl = node->subscribe("SolenoidControl", 100, solenoidControlCallback, ros::TransportHints().tcpNoDelay());
-	ros::Subscriber ledControl = node->subscribe("LEDControl", 100, ledControlCallback, ros::TransportHints().tcpNoDelay());
+	ros::Subscriber ledControl = node->subscribe("RioLedControl", 100, ledControlCallback, ros::TransportHints().tcpNoDelay());
 
 	ros::Subscriber modeTuningConfig = node->subscribe("MotorTuningConfiguration", 100, motorTuningConfigCallback, ros::TransportHints().tcpNoDelay());
 	ros::Subscriber modeTuningControl = node->subscribe("MotorTuningControl", 100, motorTuningControlCallback, ros::TransportHints().tcpNoDelay());
