@@ -836,52 +836,71 @@ double smallest_traversal(double angle, double target_angle)
 void process_imu_data(zmq_msg_t &message)
 {
 	static ck::IMUData imuData;
-	static ros::Publisher imu_data_pub = node->advertise<nav_msgs::Odometry>("/RobotIMU", 1);
 
 	void *data = zmq_msg_data(&message);
 	bool parse_result = imuData.ParseFromArray(data, zmq_msg_size(&message));
 
+
 	if (parse_result)
 	{
-		nav_msgs::Odometry odometry_data;
-		odometry_data.header.stamp = ros::Time::now();
-		odometry_data.header.frame_id = "odom";
-		odometry_data.child_frame_id = "base_link";
+        const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(0);
 
-        geometry::Pose empty_pose;
-		odometry_data.pose.pose = geometry::to_msg(empty_pose);
+        static float last_absolute_yaw = 0;
+        if(last_absolute_yaw != imuSensorData.x())
+        {
+            nav_msgs::Odometry odometry_data;
+            odometry_data.header.stamp = ros::Time::now();
+            odometry_data.header.frame_id = "odom";
+            odometry_data.child_frame_id = "base_link";
 
-        geometry::Twist empty_twist;
-        odometry_data.twist.twist = geometry::to_msg(empty_twist);
+            geometry::Pose empty_pose;
+            odometry_data.pose.pose = geometry::to_msg(empty_pose);
 
-        geometry::Covariance covariance;
-        covariance.yaw_var(0.00001);
+            geometry::Twist empty_twist;
+            odometry_data.twist.twist = geometry::to_msg(empty_twist);
 
-        odometry_data.pose.covariance = geometry::to_msg(covariance);
+            geometry::Covariance covariance;
+            covariance.yaw_var(ck::math::deg2rad(3.0));
 
-		for (int i = 0; i < imuData.imu_sensor_size(); i++)
-		{
-			const ck::IMUData::IMUSensorData &imuSensorData = imuData.imu_sensor(i);
+            odometry_data.pose.covariance = geometry::to_msg(covariance);
 
             geometry::Pose imu_orientation;
-            imu_orientation.orientation.roll(imuSensorData.z());
-            imu_orientation.orientation.pitch(imuSensorData.y());
             imu_orientation.orientation.yaw(imuSensorData.x());
-
 			odometry_data.pose.pose = geometry::to_msg(imu_orientation);
 
-			std_msgs::Float32 raw_dps;
-			raw_dps.data = imuSensorData.z_rps();
-            std_msgs::Float32 rob_data;
-            rob_data.data = imuSensorData.z_rps();
+	        static ros::Publisher imu_pose_data_pub = node->advertise<nav_msgs::Odometry>("/RobotIMU", 1);
+            imu_pose_data_pub.publish(odometry_data);
 
-			static ros::Publisher imu_dps_pub = node->advertise<std_msgs::Float32>("/rawdpsgyro", 100);
-			static ros::Publisher rob_dps_pub = node->advertise<std_msgs::Float32>("/robrawgyro", 100);
-			imu_dps_pub.publish(raw_dps);
-            rob_dps_pub.publish(rob_data);
-		}
+            last_absolute_yaw = imuSensorData.x();
+        }
 
-		imu_data_pub.publish(odometry_data);
+        static float last_yaw_rate = 0;
+        if(last_yaw_rate != imuSensorData.z_rps())
+        {
+            nav_msgs::Odometry odometry_data;
+            odometry_data.header.stamp = ros::Time::now();
+            odometry_data.header.frame_id = "odom";
+            odometry_data.child_frame_id = "base_link";
+
+            geometry::Pose empty_pose;
+            odometry_data.pose.pose = geometry::to_msg(empty_pose);
+
+            geometry::Twist twist;
+            twist.angular.yaw(ck::math::deg2rad(imuSensorData.z_rps()));
+            odometry_data.twist.twist = geometry::to_msg(twist);
+
+            geometry::Covariance covariance;
+            covariance.yaw_var(ck::math::deg2rad(1.0));
+            odometry_data.twist.covariance = geometry::to_msg(covariance);
+
+            geometry::Pose empty_orientation;
+			odometry_data.pose.pose = geometry::to_msg(empty_orientation);
+
+	        static ros::Publisher imu_pose_data_pub = node->advertise<nav_msgs::Odometry>("/RobotIMURate", 1);
+            imu_pose_data_pub.publish(odometry_data);
+
+            last_yaw_rate = imuSensorData.z_rps();
+        }
 	}
 }
 
