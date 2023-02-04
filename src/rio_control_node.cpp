@@ -693,6 +693,8 @@ void process_motor_status(zmq_msg_t &message)
 			motor_info.raw_error_derivative = motor.raw_error_derivative();
 			motor_info.raw_integral_accum = motor.raw_integral_accum();
 			motor_info.raw_output_percent = motor.raw_output_percent();
+			motor_info.faults = motor.faults();
+			motor_info.sticky_faults = motor.sticky_faults();
 			switch (motor_info.control_mode)
 			{
 			case ck_ros_base_msgs_node::Motor_Info::POSITION:
