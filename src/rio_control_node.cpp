@@ -104,7 +104,9 @@ static std::vector<float> motor_ticks_velocity_sample_window;
 
 static std::vector<int> motor_ids_to_override_encoder;
 static std::vector<int> remote_encoder_ids;
+static std::vector<float> rotations_offset_to_zero;
 static std::map<int, int> motor_remote_encoder_mappings;
+static std::map<int, int> motor_remote_encoder_offsets;
 
 ros::ServiceClient &getNTSetBoolSrv()
 {
@@ -173,7 +175,8 @@ void load_config_params()
 	}
 
 	received_data = node->getParam(CKSP(motor_ids_to_override_encoder), motor_ids_to_override_encoder) &&
-					node->getParam(CKSP(remote_encoder_ids), remote_encoder_ids);
+					node->getParam(CKSP(remote_encoder_ids), remote_encoder_ids) &&
+					node->getParam(CKSP(rotations_offset_to_zero), rotations_offset_to_zero);
 	if (!received_data)
 	{
 		ROS_ERROR("COULD NOT LOAD REMOTE ENCODER IDS");
@@ -187,6 +190,7 @@ void load_config_params()
 		for (size_t i = 0; i < motor_ids_to_override_encoder.size(); i++)
 		{
 			motor_remote_encoder_mappings[motor_ids_to_override_encoder[i]] = remote_encoder_ids[i];
+			motor_remote_encoder_offsets[motor_ids_to_override_encoder[i]] = rotations_offset_to_zero[i];
 		}
 	}
 }
@@ -591,7 +595,7 @@ void motor_transmit_loop()
 				if ((*i).second.motor.control_mode == ck_ros_base_msgs_node::Motor::MOTION_MAGIC ||
 					(*i).second.motor.control_mode == ck_ros_base_msgs_node::Motor::POSITION)
 				{
-					new_motor->set_output_value((*i).second.motor.output_value *
+					new_motor->set_output_value(((*i).second.motor.output_value + motor_remote_encoder_offsets[(*i).second.motor.id]) *
 												gear_ratio_to_output_shaft[(*i).second.motor.id - 1] *
 												motor_ticks_per_revolution[(*i).second.motor.id - 1]);
 				}
@@ -678,7 +682,7 @@ void process_motor_status(zmq_msg_t &message)
 			ck_ros_base_msgs_node::Motor_Info motor_info;
 
 			motor_info.id = motor.id();
-			motor_info.sensor_position = convertNativeUnitsToPosition(motor.sensor_position(), motor.id());
+			motor_info.sensor_position = convertNativeUnitsToPosition(motor.sensor_position(), motor.id()) - motor_remote_encoder_offsets[motor.id()];
 			motor_info.sensor_velocity = convertNativeUnitsToVelocity(motor.sensor_velocity(), motor.id());
 			motor_info.bus_voltage = motor.bus_voltage();
 			motor_info.bus_current = motor.bus_current();
