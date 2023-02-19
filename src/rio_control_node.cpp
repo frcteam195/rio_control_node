@@ -104,9 +104,9 @@ static std::vector<float> motor_ticks_velocity_sample_window;
 
 static std::vector<int> motor_ids_to_override_encoder;
 static std::vector<int> remote_encoder_ids;
-static std::vector<float> rotations_offset_to_zero;
+static std::vector<double> rotations_offset_to_zero;
 static std::map<int, int> motor_remote_encoder_mappings;
-static std::map<int, int> motor_remote_encoder_offsets;
+static std::map<int, double> motor_remote_encoder_offsets;
 
 ros::ServiceClient &getNTSetBoolSrv()
 {
@@ -181,9 +181,9 @@ void load_config_params()
 	{
 		ROS_ERROR("COULD NOT LOAD REMOTE ENCODER IDS");
 	}
-	else if (motor_ids_to_override_encoder.size() != remote_encoder_ids.size())
+	else if (motor_ids_to_override_encoder.size() != remote_encoder_ids.size() || motor_ids_to_override_encoder.size() != rotations_offset_to_zero.size())
 	{
-		ROS_ERROR("REMOTE ENCODER CONFIGURATION ERROR");
+		ROS_ERROR("REMOTE ENCODER CONFIGURATION ERROR m: %ld, r: %ld, o: %ld", motor_ids_to_override_encoder.size(), remote_encoder_ids.size(), rotations_offset_to_zero.size());
 	}
 	else
 	{
@@ -690,6 +690,7 @@ void process_motor_status(zmq_msg_t &message)
 			float offset_val = 0;
 			if (motor_remote_encoder_offsets.count(motor.id()))
 			{
+				std::cout << "motor id: " << motor.id() << " value: " << motor_remote_encoder_offsets[motor.id()] << std::endl;
 				offset_val = motor_remote_encoder_offsets[motor.id()];
 			}
 			motor_info.sensor_position = convertNativeUnitsToPosition(motor.sensor_position(), motor.id()) - offset_val;
