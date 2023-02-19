@@ -595,7 +595,12 @@ void motor_transmit_loop()
 				if ((*i).second.motor.control_mode == ck_ros_base_msgs_node::Motor::MOTION_MAGIC ||
 					(*i).second.motor.control_mode == ck_ros_base_msgs_node::Motor::POSITION)
 				{
-					new_motor->set_output_value(((*i).second.motor.output_value + motor_remote_encoder_offsets[(*i).second.motor.id]) *
+					float offset_val = 0;
+					if (motor_remote_encoder_offsets.count((*i).second.motor.id))
+					{
+						offset_val = motor_remote_encoder_offsets[(*i).second.motor.id];
+					}
+					new_motor->set_output_value(((*i).second.motor.output_value + offset_val) *
 												gear_ratio_to_output_shaft[(*i).second.motor.id - 1] *
 												motor_ticks_per_revolution[(*i).second.motor.id - 1]);
 				}
@@ -682,7 +687,12 @@ void process_motor_status(zmq_msg_t &message)
 			ck_ros_base_msgs_node::Motor_Info motor_info;
 
 			motor_info.id = motor.id();
-			motor_info.sensor_position = convertNativeUnitsToPosition(motor.sensor_position(), motor.id()) - motor_remote_encoder_offsets[motor.id()];
+			float offset_val = 0;
+			if (motor_remote_encoder_offsets.count(motor.id()))
+			{
+				offset_val = motor_remote_encoder_offsets[motor.id()];
+			}
+			motor_info.sensor_position = convertNativeUnitsToPosition(motor.sensor_position(), motor.id()) - offset_val;
 			motor_info.sensor_velocity = convertNativeUnitsToVelocity(motor.sensor_velocity(), motor.id());
 			motor_info.bus_voltage = motor.bus_voltage();
 			motor_info.bus_current = motor.bus_current();
