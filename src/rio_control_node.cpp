@@ -690,7 +690,6 @@ void process_motor_status(zmq_msg_t &message)
 			float offset_val = 0;
 			if (motor_remote_encoder_offsets.count(motor.id()))
 			{
-				std::cout << "motor id: " << motor.id() << " value: " << motor_remote_encoder_offsets[motor.id()] << std::endl;
 				offset_val = motor_remote_encoder_offsets[motor.id()];
 			}
 			motor_info.sensor_position = convertNativeUnitsToPosition(motor.sensor_position(), motor.id()) - offset_val;
