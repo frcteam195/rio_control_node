@@ -882,7 +882,14 @@ void process_imu_data(zmq_msg_t &message)
             odometry_data.pose.covariance = geometry::to_msg(covariance);
 
             geometry::Pose imu_orientation;
-            imu_orientation.orientation.yaw(imuSensorData.x());
+            geometry_msgs::Quaternion quat;
+            quat.w = imuSensorData.w();
+            quat.x = imuSensorData.x();
+            quat.y = imuSensorData.y();
+            quat.z = imuSensorData.z();
+            geometry::Rotation rotation = geometry::to_rotation(quat);
+
+            imu_orientation.orientation = rotation;
 			odometry_data.pose.pose = geometry::to_msg(imu_orientation);
 
 	        static ros::Publisher imu_pose_data_pub = node->advertise<nav_msgs::Odometry>("/RobotIMU", 1);
