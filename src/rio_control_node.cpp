@@ -343,6 +343,11 @@ void motor_config_transmit_loop()
 				{
 					new_motor->set_feedback_sensor_can_id(motor_remote_encoder_mappings[(*i).second.motor.id]);
 				}
+				new_motor->set_active_gain_slot((*i).second.motor.active_gain_slot);
+				new_motor->set_kp_1((*i).second.motor.kP_1);
+				new_motor->set_ki_1((*i).second.motor.kI_1);
+				new_motor->set_kd_1((*i).second.motor.kD_1);
+				new_motor->set_kf_1((*i).second.motor.kF_1);
 			}
 
 			bool serialize_status = motor_config.SerializeToArray(buffer, 10000);
