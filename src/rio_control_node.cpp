@@ -879,6 +879,8 @@ void process_imu_data(zmq_msg_t &message)
             odometry_data.pose.pose = geometry::to_msg(empty_pose);
 
             geometry::Twist twist;
+            twist.angular.pitch(ck::math::deg2rad(imuSensorData.x_rps()));
+            twist.angular.roll(ck::math::deg2rad(imuSensorData.y_rps()));
             twist.angular.yaw(ck::math::deg2rad(imuSensorData.z_rps()));
             odometry_data.twist.twist = geometry::to_msg(twist);
 
