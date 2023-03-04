@@ -895,8 +895,12 @@ void process_imu_data(zmq_msg_t &message)
             quat.x = imuSensorData.x();
             quat.y = imuSensorData.y();
             quat.z = imuSensorData.z();
-            geometry::Rotation rotation = geometry::to_rotation(quat);
 
+            geometry::Rotation rotation = geometry::to_rotation(quat);
+			float roll = rotation.pitch();
+			float pitch = rotation.roll();
+			rotation.roll(pitch);
+			rotation.pitch(roll);
             imu_orientation.orientation = rotation;
 			odometry_data.pose.pose = geometry::to_msg(imu_orientation);
 
