@@ -1156,6 +1156,7 @@ void led_transmit_loop(void)
 					animation->set_direction((ck::LEDAnimation::Direction)(*it).direction);
 					animation->set_offset((*it).offset);
 					animation->set_slot((*it).slot);
+					animation->set_morse_message((*it).morse_message);
 				 }
 
 				if ((*i).second.active_time < ros::Time::now())
