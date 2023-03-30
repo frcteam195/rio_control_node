@@ -102,6 +102,8 @@ static std::vector<float> gear_ratio_to_output_shaft;
 static std::vector<float> motor_ticks_per_revolution;
 static std::vector<float> motor_ticks_velocity_sample_window;
 
+static bool compressor_enabled_in_auto = false;
+
 static std::vector<int> motor_ids_to_override_encoder;
 static std::vector<int> remote_encoder_ids;
 static std::vector<double> rotations_offset_to_zero;
@@ -192,6 +194,13 @@ void load_config_params()
 			motor_remote_encoder_mappings[motor_ids_to_override_encoder[i]] = remote_encoder_ids[i];
 			motor_remote_encoder_offsets[motor_ids_to_override_encoder[i]] = rotations_offset_to_zero[i];
 		}
+	}
+
+	received_data = node->getParam(CKSP(compressor_enabled_in_auto), compressor_enabled_in_auto);
+	if (!received_data)
+	{
+		ROS_ERROR("COULD NOT COMPRESSOR IN AUTO PARAM. DEFAULTING TO FALSE.");
+		compressor_enabled_in_auto = false;
 	}
 }
 
@@ -437,6 +446,7 @@ void solenoid_transmit_loop()
 			static ck::SolenoidControl solenoid_control;
 			solenoid_control.clear_solenoids();
 			solenoid_control.Clear();
+			solenoid_control.set_compressor_is_enabled_for_auto(compressor_enabled_in_auto);
 
 			std::vector<std::map<int32_t, SolenoidTracker>::iterator> timed_out_solenoid_list;
 
